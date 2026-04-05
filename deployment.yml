@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: devops-backend-deploy
+spec:
+  replicas: 2
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 0
+  selector:
+    matchLabels:
+      app: devops-backend
+  template:
+    metadata:
+      labels:
+        app: devops-backend
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - devops-backend
+                topologyKey: "kubernetes.io/hostname"
+      containers:
+        - name: nodejs
+          image: ai-devops-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - name: backend-port
+              containerPort: 3001
+          envFrom:
+            - configMapRef:
+                name: devops-config
+          livenessProbe:
+            httpGet:
+              path: /api/index/health
+              port: backend-port
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: devops-backend-service
+spec:
+  selector:
+    app: devops-backend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: backend-port
+  type: ClusterIP
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: devops-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: dev.local
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: devops-backend-service
+                port:
+                  number: 80
