@@ -11,6 +11,7 @@ const app = express()
 import index from "./routes/index"
 import metrics from "./routes/metrics"
 import users from "./routes/users"
+import actions from "./routes/actions"
 import { errorHandler } from "./middlewares/errorHandler"
 
 
@@ -37,6 +38,7 @@ app.use(errorHandler)
 app.use("/api/index", index)
 app.use("/api/metrics", metrics)
 app.use("/api/users", users)
+app.use("/api/actions", actions)
 
 // ---------------- Disable caching ---------------- //
 app.use((req: Request, res: Response, next: NextFunction) => {

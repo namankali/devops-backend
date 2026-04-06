@@ -20,7 +20,8 @@ interface UserSignup {
     email: string,
     username?: string,
     full_name: string,
-    password_hash: string
+    password_hash: string,
+    role: string
 }
 
 interface Signin {

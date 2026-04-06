@@ -66,6 +66,18 @@ const SALT_ROUNDS = (() => {
     return rounds
 })()
 
+const GITHUB_BASE_URL = (() => {
+    const api = process.env.GITHUB_BASE_URL
+    if (!api) throw new Error("Missing GITHUB_BASE_URL")
+    return api
+})()
+
+const GITHUB_TOKEN = (() => {
+    const token = process.env.GITHUB_TOKEN
+    if (!token) throw new Error("Missing GITHUB_TOKEN")
+    return token
+})()
+
 export {
     ACCESS_TOKEN_SECRET,
     JWT_SECRET,
@@ -75,5 +87,7 @@ export {
     ENCRYPTION_SECRET,
     ACCESS_TOKEN_EXPIRES_IN,
     PEPPER,
-    SALT_ROUNDS
+    SALT_ROUNDS,
+    GITHUB_BASE_URL,
+    GITHUB_TOKEN
 }

@@ -27,7 +27,8 @@ export class UserController {
                 email,
                 username: data.username || username_,
                 full_name: data.fullname.trim() || "",
-                password_hash: hashedPassword
+                password_hash: hashedPassword,
+                role: "admin"
             };
 
             const alreadyPresent = await fetch_single_user_by_email(email);

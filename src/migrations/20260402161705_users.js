@@ -12,7 +12,7 @@ export async function up(knex) {
     table.string("full_name")
     table.text("avatar_url")
 
-    table.string("role").defaultTo("user")
+    table.string("role").defaultTo("member")
 
     table.boolean("is_active").defaultTo(true)
 
