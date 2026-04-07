@@ -2,6 +2,7 @@ import express, { NextFunction, Request, Response } from "express"
 import { UserController } from "../controllers/users"
 import { authenticator } from "../middlewares/authenticator"
 import { CustomRequest } from "../utils/interfaces"
+import { isAdmin } from "../middlewares/isAdmin"
 
 const router = express.Router()
 const userController = new UserController()
@@ -113,7 +114,7 @@ router.patch(
 
 router.post(
     "/v1/add_member",
-    authenticator,
+    [authenticator, isAdmin],
     async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         let data = { ...req.body }
