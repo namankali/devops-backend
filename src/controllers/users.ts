@@ -138,33 +138,74 @@ export class UserController {
         }
     }
 
-    async add_team(data: any): Promise<ApiResponse<void>> {
+    // async add_team(data: any): Promise<ApiResponse<void>> {
+    //     try {
+
+    //         const team_data = {
+
+    //         }
+
+    //         return new ResponseBuilder<void>()
+    //             .setSignature("AI-DEVOPS")
+    //             .success(undefined, "Added successfully", 201);
+    //     } catch (error) {
+    //         console.log(error)
+    //         throw throwError("Something went wrong")
+    //     }
+    // }
+
+    // async add_member(data: any): Promise<ApiResponse<void>> {
+    //     try {
+
+
+
+    //         return new ResponseBuilder<void>()
+    //             .setSignature("AI-DEVOPS")
+    //             .success(undefined, "Added successfully", 201);
+    //     } catch (error) {
+    //         console.log(error)
+    //         throw throwError("Something went wrong")
+    //     }
+    // }
+
+        async add_member(data: any): Promise<ApiResponse<void>> {
         try {
+            const authorization = data.req;
+            if (authorization.role !== "admin") throwError("Unauthorized", 401);
 
-            const team_data = {
+            const password = data.password?.trim();
+            if (!password) throwError("Password is required", 400);
 
+            const email = data.email?.trim();
+            if (!email) throwError("Email is required", 400);
+
+            const hashedPassword = await hashPassword(password);
+
+            let username_ = data.fullname.trim().split(" ")
+            username_ = (username_[0] + username_[1].slice(0, 1)).toLowerCase()
+
+            const insertData: UserSignup = {
+                email,
+                username: data.username || username_,
+                full_name: data.fullname.trim() || "",
+                password_hash: hashedPassword
+            };
+
+            const alreadyPresent = await fetch_single_user_by_email(email);
+
+            if (alreadyPresent) {
+                throwError("User with same email is already present", 400);
             }
 
-            return new ResponseBuilder<void>()
-                .setSignature("AI-DEVOPS")
-                .success(undefined, "Added successfully", 201);
-        } catch (error) {
-            console.log(error)
-            throw throwError("Something went wrong")
-        }
-    }
-
-    async add_member(data: any): Promise<ApiResponse<void>> {
-        try {
-
-
+            await insert_user(insertData);
 
             return new ResponseBuilder<void>()
                 .setSignature("AI-DEVOPS")
-                .success(undefined, "Added successfully", 201);
-        } catch (error) {
+                .success(undefined, "Signed up successfully", 200);
+
+        } catch (error: any) {
             console.log(error)
-            throw throwError("Something went wrong")
+            throw throwError("Something went wrong");
         }
     }
 }

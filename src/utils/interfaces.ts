@@ -21,7 +21,7 @@ interface UserSignup {
     username?: string,
     full_name: string,
     password_hash: string,
-    role: string
+    role?: string
 }
 
 interface Signin {

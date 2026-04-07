@@ -79,36 +79,53 @@ router.patch(
         }
     });
 
+// router.post(
+//     "/v1/add/team",
+//     authenticator,
+//     async (req: CustomRequest, res: Response, next: NextFunction) => {
+//         try {
+//             let data = { ...req.body }
+//             data.req = req.data
+
+//             const result = await userController.add_team(data)
+
+//         } catch (error) {
+//             next(error)
+//         }
+//     }
+// )
+
+// router.post(
+//     "/v1/add/member",
+//     authenticator,
+//     async (req: CustomRequest, res: Response, next: NextFunction) => {
+//         try {
+//             let data = { ...req.body }
+//             data.req = req.data
+
+//             // const result = await 
+
+//         } catch (error) {
+//             next(error)
+//         }
+//     }
+// )
+
 router.post(
-    "/v1/add/team",
+    "/v1/add_member",
     authenticator,
-    async (req: CustomRequest, res: Response, next: NextFunction) => {
-        try {
-            let data = { ...req.body }
-            data.req = req.data
+    async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        let data = { ...req.body }
+        data.req = req.data
 
-            const result = await userController.add_team(data)
+        const result = await userController.add_member(data)
 
-        } catch (error) {
-            next(error)
-        }
+        res.status(result.status).send(result)
+    } catch (error) {
+        next(error)
     }
-)
+})
 
-router.post(
-    "/v1/add/member",
-    authenticator,
-    async (req: CustomRequest, res: Response, next: NextFunction) => {
-        try {
-            let data = { ...req.body }
-            data.req = req.data
-
-            // const result = await 
-
-        } catch (error) {
-            next(error)
-        }
-    }
-)
 
 export default router
