@@ -30,7 +30,7 @@ spec:
                 topologyKey: "kubernetes.io/hostname"
       containers:
         - name: nodejs
-          image: ai-devops-backend:latest
+          image: devops-backend:latest
           imagePullPolicy: Always
           ports:
             - name: backend-port
