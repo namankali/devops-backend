@@ -98,7 +98,6 @@ export class UserController {
                 const accessToken = await generateAccessToken(accessTokenData)
 
                 const response_data = {
-                    session_id: session_result.id,
                     refresh_token,
                     "x-access-token": accessToken,
                     user_id: fetch_user_details.id,

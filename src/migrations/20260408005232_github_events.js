@@ -13,6 +13,8 @@ export async function up(knex) {
 
     table.timestamp("received_at").defaultTo(knex.fn.now())
 
+    table.string("delivery_id").unique()
+
     table.index(["repository_id"])
   })
 }

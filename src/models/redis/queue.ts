@@ -1,0 +1,119 @@
+import Bull, { Job } from "bull"
+import { redis } from "./redis"
+import { JobData } from "../../utils/interfaces"
+import { insert_webhook } from "../pg/webhooks"
+import { get_repo } from "../pg/repositories"
+import { insert_github_event } from "../pg/github_events"
+
+const webhookQueue = new Bull("webhook-queue", {
+    redis: {
+        // host: "redis-19514.c11.us-east-1-2.ec2.cloud.redislabs.com",
+        // port: 19514,
+        // username: "naman",
+        // password: "Naman@1234",
+        // username: process.env.REDIS_USER,
+        host: "127.0.0.1",
+        port: 3456,
+        password: "demopasscheck@123",
+    },
+    defaultJobOptions: {
+        removeOnComplete: true,
+        removeOnFail: true
+    },
+    settings: {
+        lockDuration: 30000,
+        stalledInterval: 30000,
+        maxStalledCount: 1,
+        guardInterval: 5000,
+        retryProcessDelay: 5000
+    }
+})
+
+webhookQueue.process("create-webhook", async (job: Job<JobData>, done) => {
+    const { Octokit } = await import("@octokit/rest");
+    const { repoId, owner, repo, accessToken } = job.data
+    const octokit = new Octokit({
+        auth: accessToken
+    })
+    try {
+        console.log("Webhook queue worker started");
+
+        const res = await octokit.request(
+            "POST /repos/{owner}/{repo}/hooks",
+            {
+                owner,
+                repo,
+                config: {
+                    url: "https://cuprous-caitlyn-pulsatile.ngrok-free.dev/api/webhook/wb",
+                    content_type: "json",
+                    secret: process.env.GITHUB_WEBHOOK_SECRET
+                },
+                events: ["push", "pull_request"]
+            }
+        )
+        // console.log("webhook_url api call bull .process ->> ", res)
+        await insert_webhook({
+            repoId: repoId,
+            hook_id: res.data.id,
+            webhook_url: res.data.config.url!
+        })
+        done(null, true)
+    } catch (error: any) {
+        if (error.status === 422 && error.response?.data?.errors?.[0]?.message?.includes("Hook already exists")) {
+            console.log("Webhook already exists, skipping...");
+
+            const hooks = await octokit.request(
+                "GET /repos/{owner}/{repo}/hooks",
+                { owner, repo }
+            )
+
+            const existing = hooks.data.find((h: any) => h.config?.url === "https://cuprous-caitlyn-pulsatile.ngrok-free.dev/api/webhook/wb")
+
+            if (existing) {
+                await insert_webhook({
+                    repoId,
+                    hook_id: existing.id,
+                    webhook_url: existing.config.url!,
+                });
+            }
+
+            done(null, true)
+        }
+        console.error("Error while queue processing: ", error)
+        done(error)
+    }
+})
+
+webhookQueue.process("process-webhook", async (job: Job<any>, done) => {
+    try {
+        console.log("Processing webhook event");
+
+        const { deliveryId, event, payload, githubRepoId } = job.data;
+
+        const repo = await get_repo(+githubRepoId);
+
+        if (!repo) {
+            console.log("Repo not found, skipping:", githubRepoId);
+            return true;
+        }
+
+        await insert_github_event({
+            delivery_id: deliveryId,
+            repo_id: repo.id,
+            event,
+            payload,
+        });
+
+        console.log("Webhook event stored:", deliveryId);
+
+        done(null, true);
+
+    } catch (error: any) {
+        console.error("Error processing webhook event:", error);
+        done(error);
+    }
+});
+
+export {
+    webhookQueue
+}

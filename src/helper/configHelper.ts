@@ -1,5 +1,6 @@
 require("dotenv").config()
 import ms, { StringValue } from "ms"
+import { error } from "node:console"
 const ACCESS_TOKEN_SECRET = (() => {
     const secret = process.env.ACCESS_TOKEN_SECRET
     if (!secret) throw new Error("Missing Access token secret")
@@ -78,6 +79,30 @@ const GITHUB_TOKEN = (() => {
     return token
 })()
 
+const GITHUB_TOKEN_ORG = (() => {
+    const token = process.env.GITHUB_TOKEN_ORG
+    if (!token) throw new Error("Missing GITHUB_TOKEN_ORG")
+    return token
+})()
+
+const GITHUB_ENCRYPTION_KEY_LENGTH = (() => {
+    const token = process.env.GITHUB_ENCRYPTION_KEY_LENGTH
+    if (!token) throw new Error("Missing GITHUB_ENCRYPTION_KEY_LENGTH")
+    return token
+})()
+
+const GITHUB_ENCRYPTION_ALGO = (() => {
+    const algo = process.env.GITHUB_ENCRYPTION_ALGO
+    if (!algo) throw new Error("Missing GITHUB_ENCRYPTION_ALGO")
+    return algo
+})()
+const GITHUB_ENCRYPTION_KEY = (() => {
+    if (!process.env.GITHUB_ENCRYPTION_KEY) throw error("Key not found!!!")
+    const key = Buffer.from(process.env.GITHUB_ENCRYPTION_KEY, "base64")
+    if (!key) throw new Error("Missing GITHUB_ENCRYPTION_KEY")
+    return key
+})()
+
 export {
     ACCESS_TOKEN_SECRET,
     JWT_SECRET,
@@ -89,5 +114,9 @@ export {
     PEPPER,
     SALT_ROUNDS,
     GITHUB_BASE_URL,
-    GITHUB_TOKEN
+    GITHUB_TOKEN,
+    GITHUB_TOKEN_ORG,
+    GITHUB_ENCRYPTION_KEY_LENGTH,
+    GITHUB_ENCRYPTION_ALGO,
+    GITHUB_ENCRYPTION_KEY
 }

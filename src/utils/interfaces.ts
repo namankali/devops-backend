@@ -5,7 +5,7 @@ interface CustomRequest extends Request {
     },
     "data"?: {
         [key: string]: any
-    }
+    },
 }
 
 interface AccessTokenData {
@@ -32,7 +32,6 @@ interface Signin {
 }
 
 interface LoginResponseType {
-    session_id: number,
     refresh_token: string,
     "x-access-token": string,
     user_id: number,
@@ -55,6 +54,45 @@ interface RefreshToken {
     date: string
 }
 
+interface GithubTokenEncryptedData {
+    iv: string,
+    content: string,
+    tag: string
+}
+
+interface GithubUser {
+    id: number
+    login: string
+}
+
+interface GithubOrg {
+    id: number
+    login: string
+}
+
+interface GithubRepo {
+    id: number
+    name: string
+    full_name: string
+    private: boolean
+    archived: boolean
+    language: string | null
+    default_branch: string
+    created_at: string
+    updated_at: string
+    pushed_at: string
+    owner: {
+        login: string
+    }
+}
+
+interface JobData {
+    repoId: number,
+    owner: string,
+    repo: string,
+    accessToken: string
+}
+
 export {
     CustomRequest,
     AccessTokenData,
@@ -62,5 +100,10 @@ export {
     Signin,
     Logout,
     LoginResponseType,
-    RefreshToken
+    RefreshToken,
+    GithubTokenEncryptedData,
+    GithubUser,
+    GithubOrg,
+    GithubRepo,
+    JobData
 }

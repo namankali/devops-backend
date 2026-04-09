@@ -1,9 +1,54 @@
 import crypto from "crypto"
 import jwt from "jsonwebtoken"
 import bcrypt from "bcrypt"
-import { ACCESS_TOKEN_EXPIRES_IN, ACCESS_TOKEN_SECRET, ENCRYPTION_ALGO, ENCRYPTION_IV, ENCRYPTION_SECRET, JWT_EXPIRES_IN, JWT_SECRET, PEPPER, SALT_ROUNDS } from "./configHelper"
-import { AccessTokenData, RefreshToken } from "../utils/interfaces"
+import { ACCESS_TOKEN_EXPIRES_IN, ACCESS_TOKEN_SECRET, ENCRYPTION_ALGO, ENCRYPTION_IV, ENCRYPTION_SECRET, GITHUB_ENCRYPTION_ALGO, JWT_EXPIRES_IN, JWT_SECRET, PEPPER, SALT_ROUNDS } from "./configHelper"
+import { AccessTokenData, GithubTokenEncryptedData, RefreshToken } from "../utils/interfaces"
 
+const IV_LENGTH = 12;
+const key = crypto.randomBytes(32)
+
+function encryptGithubToken(text: string, key: Buffer) {
+    const iv = crypto.randomBytes(IV_LENGTH);
+    console.log("GITHUB_ENCRYPTION_ALGO", GITHUB_ENCRYPTION_ALGO, "text", text)
+    const cipher = crypto.createCipheriv(
+        GITHUB_ENCRYPTION_ALGO,
+        key,
+        iv,
+        { authTagLength: 16 }
+    );
+
+    const encrypted = Buffer.concat([
+        cipher.update(text, 'utf8'),
+        cipher.final(),
+    ]);
+
+    const authTag = cipher.getAuthTag();
+
+    return {
+        iv: iv.toString('hex'),
+        content: encrypted.toString('hex'),
+        tag: authTag.toString('hex'),
+    };
+}
+
+function decryptGithubToken(encryptedData: GithubTokenEncryptedData, key: Buffer) {
+    const iv = Buffer.from(encryptedData.iv, 'hex');
+    const tag = Buffer.from(encryptedData.tag, 'hex');
+    const content = Buffer.from(encryptedData.content, 'hex');
+
+    const decipher = crypto.createDecipheriv(GITHUB_ENCRYPTION_ALGO, key, iv, {
+        authTagLength: 16,
+    });
+
+    decipher.setAuthTag(tag);
+
+    const decrypted = Buffer.concat([
+        decipher.update(content),
+        decipher.final(),
+    ]);
+
+    return decrypted.toString('utf8');
+}
 
 const decryptForAccessToken = async (encryptedData: string) => {
     const crypto = require('crypto');
@@ -127,10 +172,27 @@ const generateAccessToken = async (data: AccessTokenData) => {
     return token
 }
 
+function verifyGithubSignature(
+    payload: Buffer,
+    signature: string,
+    secret: string
+) {
+    const hmac = crypto.createHmac("sha256", secret)
+    const digest = `sha256=${hmac.update(payload).digest("hex")}`
+
+    return crypto.timingSafeEqual(
+        Buffer.from(digest),
+        Buffer.from(signature)
+    )
+}
+
 export {
+    encryptGithubToken,
+    decryptGithubToken,
     generateAccessToken,
     decryptForAccessToken,
     hashPassword,
     isValidPassword,
-    refreshToken
+    refreshToken,
+    verifyGithubSignature
 }
