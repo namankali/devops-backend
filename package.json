@@ -8,7 +8,7 @@
     "build": "tsc",
     "kubectl:apply": "kubectl apply -f deployment.yml",
     "kubectl:redeploy": "kubectl rollout restart deployment devops-backend-deploy",
-    "docker:build": "docker build --no-cache -t ai-devops-backend ."
+    "docker:build": "docker build --no-cache -t devops-backend ."
   },
   "author": "",
   "license": "ISC",

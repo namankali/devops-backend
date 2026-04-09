@@ -9,9 +9,9 @@ const key = crypto.randomBytes(32)
 
 function encryptGithubToken(text: string, key: Buffer) {
     const iv = crypto.randomBytes(IV_LENGTH);
-    console.log("GITHUB_ENCRYPTION_ALGO", GITHUB_ENCRYPTION_ALGO, "text", text)
+
     const cipher = crypto.createCipheriv(
-        GITHUB_ENCRYPTION_ALGO,
+        GITHUB_ENCRYPTION_ALGO as crypto.CipherGCMTypes,
         key,
         iv,
         { authTagLength: 16 }
@@ -36,9 +36,12 @@ function decryptGithubToken(encryptedData: GithubTokenEncryptedData, key: Buffer
     const tag = Buffer.from(encryptedData.tag, 'hex');
     const content = Buffer.from(encryptedData.content, 'hex');
 
-    const decipher = crypto.createDecipheriv(GITHUB_ENCRYPTION_ALGO, key, iv, {
-        authTagLength: 16,
-    });
+    const decipher = crypto.createDecipheriv(
+        GITHUB_ENCRYPTION_ALGO as crypto.CipherGCMTypes,
+        key,
+        iv,
+        { authTagLength: 16 }
+    );
 
     decipher.setAuthTag(tag);
 
