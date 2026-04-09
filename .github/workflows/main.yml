@@ -52,7 +52,7 @@ jobs:
           run: docker buildx build --load -t devops-backend:latest .
           
         - name: Scan docker image
-          uses: aquasecurity/trivy-action@v0
+          uses: aquasecurity/trivy-action@0.28.0
           with:
             image-ref: devops-backend:latest
             severity: HIGH,CRITICAL
