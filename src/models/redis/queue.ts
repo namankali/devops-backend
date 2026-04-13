@@ -1,7 +1,7 @@
 import Bull, { Job } from "bull"
 import { redis } from "./redis"
 import { JobData } from "../../utils/interfaces"
-import { insert_webhook } from "../pg/webhooks"
+import { insert_org_webhook, insert_webhook } from "../pg/webhooks"
 import { get_repo } from "../pg/repositories"
 import { insert_github_event } from "../pg/github_events"
 
@@ -48,7 +48,7 @@ webhookQueue.process("create-webhook", async (job: Job<JobData>, done) => {
                     content_type: "json",
                     secret: process.env.GITHUB_WEBHOOK_SECRET
                 },
-                events: ["push", "pull_request", "workflow_run", "issues", "issue_comment", "member", "repository"]
+                events: ["push", "pull_request", "workflow_run", "workflow_job", "issues", "issue_comment", "member", "repository"]
             }
         )
         // console.log("webhook_url api call bull .process ->> ", res)
@@ -113,6 +113,47 @@ webhookQueue.process("process-webhook", async (job: Job<any>, done) => {
         done(error);
     }
 });
+
+interface JobDataOrgWebhookCreation {
+    github_account_id: number,
+    owner: string,
+    access_token: string,
+}
+webhookQueue.process("create-webhook-org", async (job: Job<JobDataOrgWebhookCreation>, done) => {
+    try {
+        const { Octokit } = await import("@octokit/rest");
+
+        const { access_token, owner, github_account_id } = job.data
+
+        const octokit = new Octokit({
+            auth: access_token
+        })
+
+        const res = await octokit.request(
+            "POST /orgs/{owner}/hooks",
+            {
+                owner,
+                config: {
+                    url: "https://cuprous-caitlyn-pulsatile.ngrok-free.dev/api/webhook/org",
+                    content_type: "json",
+                    secret: process.env.GITHUB_WEBHOOK_SECRET
+                },
+                events: ["repository", "member", "organisation"]
+            }
+        )
+
+        await insert_org_webhook({
+            github_account_id,
+            org_login: owner,
+            webhook_url: "https://cuprous-caitlyn-pulsatile.ngrok-free.dev/api/webhook/org",
+            github_hook_id: res.data.id
+        })
+
+    } catch (error: any) {
+        console.error("Error processing webhook event:", error);
+        done(error);
+    }
+})
 
 export {
     webhookQueue
