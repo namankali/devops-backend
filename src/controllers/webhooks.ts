@@ -13,6 +13,10 @@ export class WebhookController {
         try {
             const signature = data.headers["x-hub-signature-256"] as string
             const deliveryId = data.headers["x-github-delivery"];
+            const sourceType =
+                data.headers["x-github-hook-installation-target-type"] === "organization"
+                    ? "org"
+                    : "repo"
 
             if (!signature) {
                 throw throwError("Missing Signature", 400)
@@ -33,7 +37,7 @@ export class WebhookController {
             }
 
             // idempotency check
-            const alreadyPresent = await check_delivery(deliveryId)
+            const alreadyPresent = await check_delivery(deliveryId, sourceType)
 
             if (alreadyPresent) {
                 console.log("Duplicate webhook skipped: ", deliveryId)
@@ -61,6 +65,84 @@ export class WebhookController {
                     event,
                     payload,
                     githubRepoId,
+                    sourceType
+                },
+                {
+                    jobId: deliveryId, // prevents duplicate jobs
+                    attempts: 3,
+                    backoff: 5000,
+                }
+            )
+            return new ResponseBuilder<void>()
+                .setSignature("AI-DEVOPS")
+                .success(undefined, "Webhook accepted", 200)
+
+        } catch (error: any) {
+            console.error("Webhook error:", error)
+
+            throw throwError(
+                error.message || "Webhook processing failed",
+                error.status || 500
+            )
+        }
+    }
+
+    async org_webhook(data: any): Promise<ApiResponse<void>> {
+        try {
+            const signature = data.headers["x-hub-signature-256"] as string
+            const deliveryId = data.headers["x-github-delivery"];
+            const sourceType =
+                data.headers["x-github-hook-installation-target-type"] === "organization"
+                    ? "org"
+                    : "repo"
+
+            if (!signature) {
+                throw throwError("Missing Signature", 400)
+            }
+
+            if (!deliveryId) {
+                throw throwError("Missing delivery ID", 400)
+            }
+
+            const isValid = verifyGithubSignature(
+                data.body,
+                signature,
+                process.env.GITHUB_WEBHOOK_SECRET!
+            )
+
+            if (!isValid) {
+                throw throwError("Invalid signature", 401)
+            }
+
+            const alreadyPresent = await check_delivery(deliveryId, sourceType)
+
+            if (alreadyPresent) {
+                console.log("Duplicate webhook skipped: ", deliveryId)
+
+                return new ResponseBuilder<void>()
+                    .setSignature("AI-DEVOPS")
+                    .success(undefined, "Duplicate event skipped", 200)
+            }
+
+            const payload = JSON.parse(data.body.toString())
+            const event = data.headers["x-github-event"] as string
+
+            const githubRepoId = payload.repository?.id
+
+            if (!githubRepoId) {
+                return new ResponseBuilder<void>()
+                    .setSignature("AI-DEVOPS")
+                    .success(undefined, "No repo in payload", 200)
+            }
+
+            await webhookQueue.add(
+                "process-webhook",
+                {
+                    deliveryId,
+                    event,
+                    payload,
+                    githubRepoId,
+                    sourceType
                 },
                 {
                     jobId: deliveryId, // prevents duplicate jobs
