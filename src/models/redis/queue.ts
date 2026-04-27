@@ -139,8 +139,6 @@ webhookQueue.process("process-webhook", async (job: Job<any>, done) => {
             source_type: sourceType
         });
 
-        console.log("Webhook event stored:", deliveryId);
-
         done(null, true);
 
     } catch (error: any) {
