@@ -108,6 +108,64 @@ interface InsertRepo {
     pushed_at: string,
 }
 
+
+// Models
+interface InsertMessage {
+    conversation_id: number,
+    role: string,
+    content: string,
+    status?: string,
+    created_at: string,
+    updated_at: string
+}
+
+interface InsertAIRuns {
+    conversation_id: number,
+    user_id: number,
+    assistant_message_id: number,
+    status: string,
+    model: string,
+    started_at: string
+}
+
+interface GetAIWorkflow {
+    branch_name: string
+}
+
+
+// MODELS OUTPUTS
+// 1. gtuhub events -> 'function_name' ->> 'data_for_ai_workflow'
+interface GetAIWorkflowOutput {
+    id: number;
+    run_id: number;
+    job_name: string;
+    steps: unknown;
+    head_branch: string;
+    conclusion: string | null;
+    completed_at: Date | null;
+    started_at: Date;
+    repo_name: string,
+    repo_description: string,
+    commits_url: string,
+    compare_urls: string,
+    parent_type: string,
+    db_id: number
+}
+
+interface GETAIWorflowRepos {
+    id: number,
+    repo_name: string,
+    repo_fullname: string,
+    default_branch: string,
+    is_private: boolean
+}
+
+interface GetMessagesAdmin{
+    conversation_id: number,
+    title: string,
+    messages: string,
+}
+
 export {
     CustomRequest,
     AccessTokenData,
@@ -121,5 +179,11 @@ export {
     GithubOrg,
     GithubRepo,
     JobData,
-    InsertRepo
+    InsertRepo,
+    InsertMessage,
+    InsertAIRuns,
+    GetAIWorkflow,
+    GetAIWorkflowOutput,
+    GETAIWorflowRepos,
+    GetMessagesAdmin
 }

@@ -3,17 +3,12 @@ import { authenticator } from "../middlewares/authenticator"
 import { ActionController } from "../controllers/actions"
 import { CustomRequest } from "../utils/interfaces"
 import { isAdmin } from "../middlewares/isAdmin"
+import { ActionRequest } from "../utils/types"
 
 const router = express.Router()
 const action_controller = new ActionController()
 
-type ActionRequest = {
-    req: CustomRequest["data"],
-    body: Record<string, unknown>,
-    headers: Record<string, unknown>,
-    params?: Record<string, string | string[]>,
-    query?: Record<string, unknown>
-}
+
 
 // Github accounts
 router.post("/v1/account", [authenticator, isAdmin], async (req: CustomRequest, res: Response, next: NextFunction) => {

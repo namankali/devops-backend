@@ -1,3 +1,5 @@
+import { GetAIWorkflow, GetAIWorkflowOutput } from "../../utils/interfaces"
+
 const db = require("./db")
 const table = "github_events"
 
@@ -148,6 +150,59 @@ const build_duration_by_date = async () => {
     }
 }
 
+const data_for_ai_workflow = async (data: GetAIWorkflow): Promise<GetAIWorkflowOutput[]> => {
+    try {
+        const query = db.raw(`
+                with cte as (
+                    SELECT DISTINCT on (payload -> 'workflow_job' ->> 'id')
+                        (payload -> 'workflow_job' ->> 'id'):: BIGINT as id,
+                        (payload -> 'workflow_job' ->> 'run_id'):: BIGINT as run_id,
+                        (payload -> 'workflow_job' ->> 'name') as job_name,
+                        (payload -> 'workflow_job' ->> 'steps') as steps,
+                        (payload -> 'workflow_job' ->> 'head_branch') as head_branch,
+                        (payload -> 'workflow_job' ->> 'conclusion') as conclusion,
+                        (payload -> 'workflow_job' ->> 'completed_at'):: TIMESTAMP as completed_at,
+                        (payload -> 'workflow_job' ->> 'started_at'):: TIMESTAMP as started_at,
+                        (payload -> 'repository' ->> 'name') as repo_name,
+                        (payload -> 'repository' ->> 'description') as repo_description,
+                        (payload -> 'repository' ->> 'commits_url') as commits_url,
+                        (payload -> 'repository' ->> 'compare_url') as compare_url,
+                        (payload -> 'repository' -> 'owner' ->> 'type') as parent_type,
+                        id:: INTEGER as db_id
+                    FROM github_events as ge
+                    WHERE ge.event_type = 'workflow_job'
+                    AND (ge.payload -> 'workflow_job' ->> 'head_branch') = '${data.branch_name}' 
+                    order by
+                        (payload -> 'workflow_job' ->> 'id'),
+                        CASE
+                        WHEN (payload -> 'workflow_job' ->> 'status') = 'completed' THEN 0
+                        ELSE 1
+                        END
+                    )
+                SELECT
+                    *
+                FROM cte
+                    ORDER by cte.db_id DESC;
+            `)
+
+        const result = await query
+        return result.rows
+    } catch (error) {
+        throw error
+    }
+}
+
+const get_logs_for_ai = async (data: any) => {
+    try {
+        const failed = data.hasOwnProperty("failed") ? true : false
+        const query = db.raw(`
+                
+        `)
+    } catch (error) {
+        throw error
+    }
+}
+
 
 
 
@@ -158,5 +213,7 @@ export {
     pipeline_stats,
     build_info_query,
     branch_build_info_query,
-    build_duration_by_date
+    build_duration_by_date,
+    data_for_ai_workflow,
+    get_logs_for_ai
 }

@@ -15,6 +15,8 @@ import metrics from "./routes/metrics"
 import users from "./routes/users"
 import actions from "./routes/actions"
 import webhook from "./routes/webhook"
+import chats from "./routes/chats"
+import ai from "./routes/ai"
 import { errorHandler } from "./middlewares/errorHandler"
 
 
@@ -45,6 +47,8 @@ app.use("/api/index", index)
 app.use("/api/metrics", metrics)
 app.use("/api/users", users)
 app.use("/api/actions", actions)
+app.use("/api/chats", chats)
+app.use("/api/ai", ai)
 
 // ---------------- Disable caching ---------------- //
 app.use((req: Request, res: Response, next: NextFunction) => {

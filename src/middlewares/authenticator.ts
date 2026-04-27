@@ -81,6 +81,7 @@ export const authenticator = async (
             req.data = {
                 ...decryptedData,
                 "refresh-token": refreshToken,
+                "token": accessToken
                 // client_ip: ip
             };
 
