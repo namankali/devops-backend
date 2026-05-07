@@ -1,12 +1,14 @@
 import express, { NextFunction, Request, Response } from "express"
 import { authenticator } from "../middlewares/authenticator"
 import { ActionController } from "../controllers/actions"
+import { RepositoriesController } from "../controllers/repositories"
 import { CustomRequest } from "../utils/interfaces"
 import { isAdmin } from "../middlewares/isAdmin"
 import { ActionRequest } from "../utils/types"
 
 const router = express.Router()
 const action_controller = new ActionController()
+const repo_controller = new RepositoriesController()
 
 
 
@@ -60,8 +62,24 @@ router.post("/v1/ind/repo", [authenticator, isAdmin], async (req: CustomRequest,
     try {
         let data: Partial<ActionRequest> = {
             req: req.data,
+            body: req.body
         }
         const result = await action_controller.add_repository(data)
+
+        return res.status(result.status).send(result)
+    } catch (error) {
+        next(error)
+    }
+
+})
+
+router.get("/v1/urr/repo", [authenticator, isAdmin], async (req: CustomRequest, res: Response, next: NextFunction) => {
+    try {
+        let data: Partial<ActionRequest> = {
+            req: req.data,
+            body: req.body
+        }
+        const result = await action_controller.fetch_unregistered_repos(data)
 
         return res.status(result.status).send(result)
     } catch (error) {
@@ -147,6 +165,35 @@ router.get("/v1/build/chart", authenticator, async (req: CustomRequest, res: Res
         }
 
         const result = await action_controller.build_duration_info(data)
+        res.status(result.status).send(result)
+    } catch (error) {
+        next(error)
+    }
+})
+
+
+router.get("/v1/dashboard/rd", [authenticator, isAdmin], async (req: CustomRequest, res: Response, next: NextFunction) => {
+    try {
+        let data: Partial<ActionRequest> = {
+            req: req.data
+            // query: req.query
+        }
+
+        const result = await repo_controller.get_dashboard_cards_info(data)
+        res.status(result.status).send(result)
+    } catch (error) {
+        next(error)
+    }
+})
+
+router.get("/v1/dashboard/repos", [authenticator, isAdmin], async (req: CustomRequest, res: Response, next: NextFunction) => {
+    try {
+        let data: Partial<ActionRequest> = {
+            req: req.data
+            // query: req.query
+        }
+
+        const result = await repo_controller.get_all_repos_data_dashboard(data)
         res.status(result.status).send(result)
     } catch (error) {
         next(error)

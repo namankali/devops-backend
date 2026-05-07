@@ -87,7 +87,6 @@ webhookQueue.process("create-webhook", async (job: Job<JobData>, done) => {
 
 webhookQueue.process("process-webhook", async (job: Job<any>, done) => {
     try {
-        console.log("Processing webhook event =====>>>>>> ", job.data);
 
         const { deliveryId, event, payload, githubRepoId, sourceType } = job.data;
 
@@ -119,7 +118,6 @@ webhookQueue.process("process-webhook", async (job: Job<any>, done) => {
                 delivery_id: deliveryId,
                 source_type: sourceType
             })
-            console.log(" NEw Repo and gihub_event inserted in DB where no repository details were found")
             return true;
         }
 
@@ -138,7 +136,6 @@ webhookQueue.process("process-webhook", async (job: Job<any>, done) => {
             payload,
             source_type: sourceType
         });
-
         done(null, true);
 
     } catch (error: any) {

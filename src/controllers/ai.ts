@@ -11,17 +11,16 @@ export class AIController {
     async fetch_workflow_logs(data: any): Promise<ApiResponse<GetAIWorkflowOutput[] | GETAIWorflowRepos[] | string[]>> {
         try {
             console.log("incoming data", data)
-            if (data.query.repos) {
+            if (data.query.repos.toLowerCase() === "true") {
                 const repos_data = await get_all_repos(+data.req.user_id)
 
                 return new ResponseBuilder<GETAIWorflowRepos[]>()
                     .setSignature("AI-DEVOPS")
                     .success(repos_data, "Data for LLM")
-            } else if (Object.prototype.hasOwnProperty.call(data.query, "repo_name") && data.query.repo_name.length > 0) {
-                console.log("------------- single repo call --------------")
+            } else if (data.query.hasOwnProperty("repo_name") && data.query.repo_name.length > 0) {
+                
                 const repo_details = await get_repo_by_name(data.query?.repo_name || "")
 
-                console.log("repo_details", repo_details)
                 return new ResponseBuilder<string[]>()
                     .setSignature("AI-DEVOPS")
                     .success(repo_details, "Data for LLM")

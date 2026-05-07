@@ -53,8 +53,11 @@ const get_github_access_token = async (where_data: GetAccessToken) => {
 const get_github_account_details = async (where_data: Record<string, number>) => {
     try {
         let query = db.select([
+            `${table}.id`,
             `${table}.access_token`,
-            `${table}.github_user_id`
+            `${table}.github_user_id`,
+            `${table}.iv`,
+            `${table}.tag`
         ]).from(table)
 
         query = query.where("user_id", where_data.user_id)

@@ -17,15 +17,32 @@ const get_repo = async (github_repo_id: number) => {
 const get_repo_by_name = async (repo_name: string) => {
     try {
         const query = db.raw(`
-                SELECT
-                    id,
-                    name,
-                    github_repo_id,
-                    full_name,
-                    default_branch,
-                    private as is_private
+              SELECT
+                id,
+                name,
+                github_repo_id,
+                full_name,
+                default_branch,
+                private as is_private,
+                ge.run_id,
+                ge.registered_under,
+                case
+                  when ge.repo_language is null then LANGUAGE
+                  else ge.repo_language
+                end as repo_language
                 from repositories
-                where name = ${repo_name}
+                LEFT JOIN LATERAL(
+                SELECT DISTINCT  on (payload -> 'workflow_job' ->> 'run_id')
+                    (payload -> 'workflow_job' ->> 'run_id'):: bigint as run_id,
+                    (payload -> 'repository' -> 'owner' ->> 'type') as registered_under,
+                    (payload -> 'repository' ->> 'language') as repo_language
+            from github_events
+            where event_type = 'workflow_job'
+            and payload -> 'repository' ->> 'name' = '${repo_name}'
+            ORDER BY (payload -> 'workflow_job' ->> 'run_id'), (payload -> 'workflow_job' ->> 'updated-at') DESC 
+            LIMIT 1
+              ) as ge on TRUE
+            where name = '${repo_name}'
             `)
         const result = await query
         return result.rows
@@ -38,7 +55,7 @@ const get_all_repos = async (user_id: number) => {
     try {
         let query = db.raw(`
                 SELECT
-                    id,
+                    github_repo_id,
                     name as repo_name,
                     full_name as repo_fullname,
                     default_branch,
@@ -104,11 +121,118 @@ const update_repo_github_accounts_id = async (where_data: UpdateWhereDataReposit
     }
 }
 
+const get_repo_details_dashboard = async () => {
+    try {
+        const query = db.raw(`
+                SELECT
+                    COUNT(DISTINCT r.id) AS repo_count,
+                    COUNT(ms.workflow_run_id) AS failed_workflow_run_count
+                FROM repositories r
+                LEFT JOIN LATERAL (
+                    SELECT DISTINCT ON (ge.payload -> 'workflow_run' ->> 'id')
+                        ge.payload -> 'workflow_run' ->> 'id' AS workflow_run_id
+                    FROM github_events ge
+                    WHERE ge.repository_id = r.id
+                    AND ge.event_type = 'workflow_run'
+                    AND ge.payload -> 'workflow_run' ->> 'conclusion' = 'failure'
+                    ORDER BY
+                        ge.payload -> 'workflow_run' ->> 'id',
+                        ge.payload -> 'workflow_run' ->> 'updated_at' DESC
+                ) ms ON TRUE;
+            `)
+        const result = await query
+        return result.rows
+    } catch (error) {
+        throw error
+    }
+}
+
+const detailed_repos_data_dashboard = async () => {
+    try {
+        const query = db.raw(`
+                SELECT
+                    name,
+                    github_repo_id,
+                    CASE
+                        WHEN owner_login = 'namankali' THEN 'org'
+                        ELSE 'personal'
+                    END as type,
+                    owner_login as owner,
+                    default_branch as branch,
+                    COALESCE(ms.latest_build_conclusion, 'N/A') as build,
+                    COALESCE(cc.deploy_status, 'N/A') as deploy,
+                    COALESCE(nm.activity, 'N/A') AS activity
+                from repositories as rs
+                    
+                LEFT JOIN LATERAL(
+                    SELECT DISTINCT ON (repository_id)
+                    repository_id,
+                    payload->'repository'->>'full_name' AS repo_name,
+                    payload->'workflow_run'->>'conclusion' AS latest_build_conclusion,
+                    payload->'workflow_run'->>'status' AS status,
+                    payload->'workflow_run'->>'html_url' AS build_url,
+                    received_at
+                    FROM github_events
+                    WHERE event_type = 'workflow_run'
+                    AND payload->'workflow_run'->>'status' = 'completed'
+                    AND payload->'workflow_run'->>'conclusion' IN ('success', 'failure')
+                    and repository_id = rs.id
+                    ORDER BY repository_id, received_at DESC
+                        
+                    ) as ms on true
+                    
+                LEFT JOIN LATERAL(
+                    SELECT DISTINCT ON (repository_id)
+                        repository_id,
+                        payload->'repository'->>'full_name' AS repo_name,
+                        payload->'workflow_job'->>'name' AS job_name,
+                        payload->'workflow_job'->>'status' AS job_status,
+                        payload->'workflow_job'->>'conclusion' AS deploy_status,
+                        received_at
+                    FROM github_events
+                    WHERE event_type = 'workflow_job'
+                    AND LOWER(payload->'workflow_job'->>'name') LIKE '%deploy%'
+                    and repository_id = rs.id
+                    ORDER BY repository_id, received_at DESC
+                    ) as cc on TRUE
+
+                LEFT JOIN LATERAL (
+                    SELECT
+                        ge.received_at AS latest_workflow_received_at,
+                        ge.payload->'workflow_run'->>'updated_at' AS completion_time,
+                        CASE
+                        WHEN NOW() - (ge.payload->'workflow_run'->>'updated_at')::timestamptz < INTERVAL '1 hour'
+                            THEN CONCAT(EXTRACT(MINUTE FROM NOW() - (ge.payload->'workflow_run'->>'updated_at')::timestamptz)::INT, 'm ago')
+                        WHEN NOW() - (ge.payload->'workflow_run'->>'updated_at')::timestamptz < INTERVAL '1 day'
+                            THEN CONCAT(EXTRACT(HOUR FROM NOW() - (ge.payload->'workflow_run'->>'updated_at')::timestamptz)::INT, 'h ago')
+                        ELSE CONCAT(EXTRACT(DAY FROM NOW() - (ge.payload->'workflow_run'->>'updated_at')::timestamptz)::INT, 'd ago')
+                        END AS activity
+                    FROM github_events ge
+                    WHERE ge.repository_id = rs.id
+                        AND ge.event_type = 'workflow_run'
+                        AND ge.payload->'workflow_run'->>'status' = 'completed'
+                    ORDER BY (ge.payload->'workflow_run'->>'updated_at')::timestamptz DESC
+                    LIMIT 1
+                ) AS nm ON TRUE
+
+                order by rs.id 
+            `)
+
+
+        const result = await query
+        return result.rows
+    } catch (error) {
+        throw error
+    }
+}
+
 
 export {
     get_repo,
     get_repo_by_name,
     get_all_repos,
     insert_repo,
-    update_repo_github_accounts_id
+    update_repo_github_accounts_id,
+    get_repo_details_dashboard,
+    detailed_repos_data_dashboard
 }

@@ -119,7 +119,7 @@ export class Chats {
             const db_result = await get_messages(
                 data.req.user_id,
                 data.query?.offset ? data.query.offset : 0,
-                data.query?.page ? data.query.page : 20
+                data.query?.limit ? data.query.limit : 10
             ) as GetMessagesAdmin[]
 
             return new ResponseBuilder<GetMessagesAdmin[]>()
@@ -141,7 +141,6 @@ export class Chats {
 
     async update_conversation(data: any): Promise<ApiResponse<Record<string, string>>> {
         try {
-            console.log("controller data ", data)
             const msgs_row = [
                 {
                     content: data.body.message,

@@ -160,10 +160,22 @@ interface GETAIWorflowRepos {
     is_private: boolean
 }
 
-interface GetMessagesAdmin{
+interface GetMessagesAdmin {
     conversation_id: number,
     title: string,
     messages: string,
+}
+
+interface DashboardReposDetails {
+    name: string,
+    type: string,
+    owner: string,
+    branch: string,
+    build: string,
+    prs: number,
+    deploy: string,
+    security: string,
+    activity: string,
 }
 
 export {
@@ -185,5 +197,6 @@ export {
     GetAIWorkflow,
     GetAIWorkflowOutput,
     GETAIWorflowRepos,
-    GetMessagesAdmin
+    GetMessagesAdmin,
+    DashboardReposDetails
 }

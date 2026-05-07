@@ -14,8 +14,8 @@ router.get("/v1/info", [authenticator, isAdmin], async (req: CustomRequest, res:
     try {
         let data: Partial<ActionRequest> = {
             req: req.data,
-            params: req.params,
-            query: req.query
+            params: { ...req.params },
+            query: { ...req.query }
         }
         const result = await ai_controller.fetch_workflow_logs(data)
 

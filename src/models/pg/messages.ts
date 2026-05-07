@@ -38,10 +38,10 @@ const get_messages = async (id: number, offset: number = 0, limit: number = 20):
                         *
                     FROM messages ms
                     where conversation_id = cs.id
-                    order by ms.created_at DESC
+                    order by ms.id DESC
                     LIMIT ${limit} OFFSET ${offset}
                     ) ms on TRUE
-                where cs.user_id = 1
+                where cs.user_id = ${id}
                 GROUP by cs.id, cs.title
             `)
 
