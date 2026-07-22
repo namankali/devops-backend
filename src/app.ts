@@ -16,6 +16,7 @@ import users from "./routes/users"
 import actions from "./routes/actions"
 import webhook from "./routes/webhook"
 import chats from "./routes/chats"
+import kubernetes from "./routes/kubernetes"
 import ai from "./routes/ai"
 import { errorHandler } from "./middlewares/errorHandler"
 
@@ -49,6 +50,7 @@ app.use("/api/users", users)
 app.use("/api/actions", actions)
 app.use("/api/chats", chats)
 app.use("/api/ai", ai)
+app.use("/api/kubernetes", kubernetes)
 
 // ---------------- Disable caching ---------------- //
 app.use((req: Request, res: Response, next: NextFunction) => {

@@ -51,7 +51,7 @@ export class WebhookController {
             const event = data.headers["x-github-event"] as string
 
             const githubRepoId = payload.repository?.id
-
+            console.log("hi")
             if (!githubRepoId) {
                 return new ResponseBuilder<void>()
                     .setSignature("AI-DEVOPS")

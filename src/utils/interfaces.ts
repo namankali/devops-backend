@@ -178,6 +178,147 @@ interface DashboardReposDetails {
     activity: string,
 }
 
+interface GetInfoKubernetesAPI {
+    value: number,
+    sub_value: number,
+    title: string
+}
+
+interface GetInfoKubernetesPods {
+    name: string,
+    namespace: string,
+    status: string,
+    node: string,
+    age: string,
+    restarts: number
+    // ip: string
+}
+interface GetInfoNamespaces {
+    name: string,
+    status: string,
+}
+
+interface GetInfoKubernetesDeployments {
+    name: string | undefined
+    namespace: string | undefined
+    replicas: number | undefined
+    availableReplicas: number | undefined
+    created: Date | undefined
+}
+
+interface GetInfoReplicaSets {
+    name: string | undefined,
+    namespace: string | undefined,
+    replicas: number | undefined,
+    available_replicas: number | undefined,
+    ready_replicas: number | undefined,
+    created: Date | undefined,
+}
+
+interface GetInfoDaemonSets {
+    name: string | undefined,
+    namespace: string | undefined,
+    current_number_scheduled: number | undefined,
+    number_available: number | undefined,
+    created: Date | undefined,
+}
+interface GetInfoServices {
+    name: string | undefined,
+    namespace: string | undefined,
+    created: Date | undefined,
+}
+
+interface GetInfoIngress {
+    name: string | undefined,
+    namespace: string | undefined,
+    created: Date | undefined,
+    ingress_class_name: string | undefined,
+    hostname: string | undefined
+}
+interface GetInfoConfigMaps {
+    name: string | undefined,
+    namespace: string | undefined,
+    created: Date | undefined,
+}
+
+interface PodDetails {
+    name: string,
+    namespace: string,
+    node: string,
+    status: string,
+    ip: string,
+    created: string,
+    age: string,
+    cpu_usage: string,
+    memory_usage: string,
+    yaml: string
+}
+
+interface DeploymentDetails {
+    name: string,
+    created: string,
+    available_condition: string,
+    progressing_condition: string,
+    ready_replicas: number,
+    updated_replicas: number,
+    yaml: string
+}
+
+interface ReplicaSetsDetails {
+    name: string | undefined,
+    namespace: string | undefined,
+    generation: number | undefined,
+    api_version: string | undefined,
+    resource_version: string | undefined,
+    yaml: string | undefined
+
+}
+interface DaemonSetsDetails {
+    name: string | undefined,
+    api_version: string | undefined,
+    resource_version: string | undefined,
+    revision_history_limit: number | undefined,
+    uuid: string | undefined,
+    observed_generation: string | undefined,
+    updated_number_scheduled: string | undefined,
+}
+interface ServiceDetails {
+    name: string | undefined,
+    api_version: string | undefined,
+    resource_version: string | undefined,
+    revision_history_limit: number | undefined,
+    uuid: string | undefined,
+    cluster_ip: string | undefined,
+    internal_traffic_policy: string | undefined,
+    yaml: string
+}
+interface IngressDetails {
+    name: string | undefined,
+    api_version: string | undefined,
+    resource_version: string | undefined,
+    revision_history_limit: number | undefined,
+    uuid: string | undefined,
+    generation: number | undefined,
+    yaml: string
+}
+interface SecretDetails {
+    name: string | undefined,
+    api_version: string | undefined,
+    resource_version: string | undefined,
+    revision_history_limit: number | undefined,
+    uid: string | undefined,
+    yaml: string
+}
+interface namespaceDetails {
+    name: string | undefined,
+    api_version: string | undefined,
+    resource_version: string | undefined,
+    revision_history_limit: number | undefined,
+    uid: string | undefined,
+    created: Date | undefined,
+    yaml: string
+}
+
 export {
     CustomRequest,
     AccessTokenData,
@@ -198,5 +339,22 @@ export {
     GetAIWorkflowOutput,
     GETAIWorflowRepos,
     GetMessagesAdmin,
-    DashboardReposDetails
+    DashboardReposDetails,
+    GetInfoKubernetesPods,
+    GetInfoKubernetesAPI,
+    PodDetails,
+    DeploymentDetails,
+    GetInfoKubernetesDeployments,
+    GetInfoReplicaSets,
+    ReplicaSetsDetails,
+    GetInfoDaemonSets,
+    DaemonSetsDetails,
+    GetInfoServices,
+    ServiceDetails,
+    GetInfoIngress,
+    IngressDetails,
+    GetInfoConfigMaps,
+    SecretDetails,
+    GetInfoNamespaces,
+    namespaceDetails
 }

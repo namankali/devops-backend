@@ -52,6 +52,8 @@ const get_github_access_token = async (where_data: GetAccessToken) => {
 
 const get_github_account_details = async (where_data: Record<string, number>) => {
     try {
+        const where_key = where_data.hasOwnProperty("id") ? "id" : "user_id"
+        const where_value = where_data.hasOwnProperty("id") ? where_data.id : where_data.user_id
         let query = db.select([
             `${table}.id`,
             `${table}.access_token`,
@@ -60,7 +62,7 @@ const get_github_account_details = async (where_data: Record<string, number>) =>
             `${table}.tag`
         ]).from(table)
 
-        query = query.where("user_id", where_data.user_id)
+        query = query.where(where_key,where_value)
         return await query.first()
     } catch (error) {
         throw error

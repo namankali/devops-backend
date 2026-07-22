@@ -1,10 +1,18 @@
 import Bull, { Job } from "bull"
-import { redis } from "./redis"
+import axios from "axios"
 import { InsertRepo, JobData } from "../../utils/interfaces"
 import { insert_org_webhook, insert_webhook } from "../pg/webhooks"
 import { get_repo, insert_repo, update_repo_github_accounts_id } from "../pg/repositories"
 import { insert_github_event } from "../pg/github_events"
-import { get_user_account_details, update_github_access_token } from "../pg/github"
+import { get_github_account_details, get_user_account_details, update_github_access_token } from "../pg/github"
+import { decryptGithubToken } from "../../helper/secret_functions"
+import { GITHUB_ENCRYPTION_KEY } from "../../helper/configHelper"
+
+interface JobDataOrgWebhookCreation {
+    github_account_id: number,
+    owner: string,
+    access_token: string,
+}
 
 const webhookQueue = new Bull("webhook-queue", {
     redis: {
@@ -87,7 +95,7 @@ webhookQueue.process("create-webhook", async (job: Job<JobData>, done) => {
 
 webhookQueue.process("process-webhook", async (job: Job<any>, done) => {
     try {
-
+        console.log("process-Webhook job started.......")
         const { deliveryId, event, payload, githubRepoId, sourceType } = job.data;
 
         const repo = await get_repo(+githubRepoId);
@@ -118,7 +126,6 @@ webhookQueue.process("process-webhook", async (job: Job<any>, done) => {
                 delivery_id: deliveryId,
                 source_type: sourceType
             })
-            return true;
         }
 
         if (payload.action === "deleted") {
@@ -136,6 +143,28 @@ webhookQueue.process("process-webhook", async (job: Job<any>, done) => {
             payload,
             source_type: sourceType
         });
+        console.log("event detils :::: ", event)
+        if (
+            event === "workflow_run" &&
+            payload.action === "completed" &&
+            payload.workflow_run?.conclusion === "failure"
+        ) {
+            console.log("HI BUDDY!")
+            await webhookQueue.add("process-failed-build", {
+                repoDbId: repo.id,
+                githubRepoId,
+                owner: payload.repository.owner.login,
+                repo: payload.repository.name,
+                runId: payload.workflow_run.id,
+                runNumber: payload.workflow_run.run_number,
+                workflowName: payload.workflow_run.name,
+                branch: payload.workflow_run.head_branch,
+                commitSha: payload.workflow_run.head_sha,
+                htmlUrl: payload.workflow_run.html_url,
+                githubAccountId: repo.github_account_id,
+            });
+        }
+
         done(null, true);
 
     } catch (error: any) {
@@ -144,11 +173,6 @@ webhookQueue.process("process-webhook", async (job: Job<any>, done) => {
     }
 });
 
-interface JobDataOrgWebhookCreation {
-    github_account_id: number,
-    owner: string,
-    access_token: string,
-}
 webhookQueue.process("create-webhook-org", async (job: Job<JobDataOrgWebhookCreation>, done) => {
     try {
         const { Octokit } = await import("@octokit/rest");
@@ -187,6 +211,80 @@ webhookQueue.process("create-webhook-org", async (job: Job<JobDataOrgWebhookCrea
         done(error);
     }
 })
+
+webhookQueue.process("process-failed-build", async (job, done) => {
+    try {
+        console.log(" queue 'process-failed-build' has started ->>> ", job.data)
+        const { Octokit } = await import("@octokit/rest");
+
+        const {
+            owner,
+            repo,
+            runId,
+            repoDbId,
+            githubAccountId,
+            workflowName,
+            branch,
+            commitSha,
+            htmlUrl,
+        } = job.data;
+
+        const account = await get_github_account_details({ id: githubAccountId });
+
+        const token = decryptGithubToken({
+            content: account.access_token,
+            iv: account.iv,
+            tag: account.tag,
+        }, GITHUB_ENCRYPTION_KEY);
+
+        const octokit = new Octokit({ auth: token });
+
+        const jobsRes = await octokit.request(
+            "GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs",
+            {
+                owner,
+                repo,
+                run_id: runId,
+            }
+        );
+        console.log("job response ->>> ", jobsRes)
+        const failedJobs = jobsRes.data.jobs.filter(
+            (j) => j.conclusion === "failure"
+        );
+
+        for (const failedJob of failedJobs) {
+            const logsRes = await octokit.request(
+                "GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs",
+                {
+                    owner,
+                    repo,
+                    job_id: failedJob.id,
+                }
+            );
+
+            const logs = String(logsRes.data);
+
+            console.log("logs", logs)
+
+            await axios.post(`${process.env.PYTHON_MSRV}/rag/ingest-build-failure`, {
+                repo_id: repoDbId,
+                repo_name: `${owner}/${repo}`,
+                run_id: runId,
+                job_id: failedJob.id,
+                job_name: failedJob.name,
+                workflow_name: workflowName,
+                branch,
+                commit_sha: commitSha,
+                html_url: htmlUrl,
+                logs:logs,
+            });
+        }
+
+        done(null, true);
+    } catch (error) {
+        done(error as Error);
+    }
+});
 
 export {
     webhookQueue
