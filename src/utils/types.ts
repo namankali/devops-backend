@@ -19,7 +19,8 @@ type ActionRequest = {
     body: Record<string, unknown>,
     headers: Record<string, unknown>,
     params?: Record<string, string | string[]>,
-    query?: Record<string, unknown>
+    query?: Record<string, unknown>,
+    file?: File
 }
 
 

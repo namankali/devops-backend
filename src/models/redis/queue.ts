@@ -247,7 +247,7 @@ webhookQueue.process("process-failed-build", async (job, done) => {
                 run_id: runId,
             }
         );
-        console.log("job response ->>> ", jobsRes)
+        
         const failedJobs = jobsRes.data.jobs.filter(
             (j) => j.conclusion === "failure"
         );

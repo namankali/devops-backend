@@ -6,6 +6,7 @@ interface CustomRequest extends Request {
     "data"?: {
         [key: string]: any
     },
+    "file"?: any
 }
 
 interface AccessTokenData {
@@ -241,7 +242,13 @@ interface GetInfoConfigMaps {
     created: Date | undefined,
 }
 
-interface PodDetails {
+interface BaseResourceDetails {
+    cpu_usage: number | undefined,
+    memory_usage: number | undefined,
+    yaml: string | undefined
+}
+
+interface PodDetails extends BaseResourceDetails {
     name: string,
     namespace: string,
     node: string,
@@ -249,31 +256,27 @@ interface PodDetails {
     ip: string,
     created: string,
     age: string,
-    cpu_usage: string,
-    memory_usage: string,
-    yaml: string
+    container_names: string[]
 }
 
-interface DeploymentDetails {
+interface DeploymentDetails extends BaseResourceDetails {
     name: string,
     created: string,
     available_condition: string,
     progressing_condition: string,
     ready_replicas: number,
     updated_replicas: number,
-    yaml: string
 }
 
-interface ReplicaSetsDetails {
+interface ReplicaSetsDetails extends BaseResourceDetails {
     name: string | undefined,
     namespace: string | undefined,
     generation: number | undefined,
     api_version: string | undefined,
     resource_version: string | undefined,
-    yaml: string | undefined
 
 }
-interface DaemonSetsDetails {
+interface DaemonSetsDetails extends BaseResourceDetails {
     name: string | undefined,
     api_version: string | undefined,
     resource_version: string | undefined,
@@ -282,7 +285,7 @@ interface DaemonSetsDetails {
     observed_generation: string | undefined,
     updated_number_scheduled: string | undefined,
 }
-interface ServiceDetails {
+interface ServiceDetails extends BaseResourceDetails {
     name: string | undefined,
     api_version: string | undefined,
     resource_version: string | undefined,
@@ -290,36 +293,49 @@ interface ServiceDetails {
     uuid: string | undefined,
     cluster_ip: string | undefined,
     internal_traffic_policy: string | undefined,
-    yaml: string
 }
-interface IngressDetails {
+interface IngressDetails extends BaseResourceDetails {
     name: string | undefined,
     api_version: string | undefined,
     resource_version: string | undefined,
     revision_history_limit: number | undefined,
     uuid: string | undefined,
-    generation: number | undefined,
-    yaml: string
+    generation: number | undefined
 }
-interface SecretDetails {
+interface SecretDetails extends BaseResourceDetails {
     name: string | undefined,
     api_version: string | undefined,
     resource_version: string | undefined,
     revision_history_limit: number | undefined,
-    uid: string | undefined,
-    yaml: string
+    uid: string | undefined
 }
-interface namespaceDetails {
+interface namespaceDetails extends BaseResourceDetails {
     name: string | undefined,
     api_version: string | undefined,
     resource_version: string | undefined,
     revision_history_limit: number | undefined,
     uid: string | undefined,
     created: Date | undefined,
-    yaml: string
+}
+
+interface EventDetails {
+    id: number | undefined,
+    type: string | undefined,
+    reason: string | undefined,
+    message: string | undefined,
+    last_timestamp: Date | undefined
+}
+
+interface DefaultClusterData {
+    id: number | undefined,
+    display_name: string | undefined,
+    provider: string | undefined,
+    environment: string | undefined,
+    name: string | undefined
 }
 
 export {
+    EventDetails,
     CustomRequest,
     AccessTokenData,
     UserSignup,
@@ -356,5 +372,6 @@ export {
     GetInfoConfigMaps,
     SecretDetails,
     GetInfoNamespaces,
-    namespaceDetails
+    namespaceDetails,
+    DefaultClusterData
 }

@@ -7,14 +7,17 @@
     "start": "node dist/liver/bin.js",
     "build": "tsc",
     "kubectl:apply": "kubectl apply -f deployment.yml",
-    "kubectl:redeploy": "kubectl rollout restart deployment devops-backend-deploy",
-    "docker:build": "docker build --no-cache -t devops-backend ."
+    "kubectl:redeploy": "kubectl rollout restart deployment devops-backend-deploy -n devops",
+    "docker:build": "docker build --no-cache -t namankali/devops-backend:latest .",
+    "docker:tag": "docker tag namankali/devops-backend:latest namankali/devops-backend:latest",
+    "docker:push": "docker push namankali/devops-backend:latest",
+    "knex:make": "npx knex migrate:make "
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@kubernetes/client-node": "^1.4.0",
+    "@kubernetes/client-node": "^0.22.3",
     "@octokit/rest": "^22.0.1",
     "axios": "^1.14.0",
     "bcrypt": "^6.0.0",
@@ -33,6 +36,7 @@
     "knex": "^3.2.8",
     "moment": "^2.30.1",
     "morgan": "^1.10.1",
+    "multer": "^2.2.0",
     "pg": "^8.20.0",
     "systeminformation": "^5.31.5",
     "validator": "^13.15.26"
@@ -50,8 +54,11 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/knex": "^0.15.2",
     "@types/morgan": "^1.9.10",
+    "@types/multer": "^2.2.0",
     "@types/node": "^25.5.0",
+    "@types/request": "^2.48.13",
     "@types/validator": "^13.15.10",
+    "@types/ws": "^8.18.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^6.0.2"
   }

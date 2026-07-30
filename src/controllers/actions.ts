@@ -81,7 +81,6 @@ export class ActionController {
             )
 
             const githubUser = userRes.data
-            console.log("githubUser -> ", githubUser)
 
             // Insert account
             const [account] = await insert_account({
@@ -136,7 +135,6 @@ export class ActionController {
                     })
 
                     const repos = repoRes.data
-                    console.log("repos data ->>>>. ", repos)
 
                     if (!repos.length) {
                         hasMore = false
@@ -232,7 +230,6 @@ export class ActionController {
 
     async get_github_token(data: any): Promise<ApiResponse<Record<string, string>>> {
         try {
-            console.log("incoming data", data)
             const where_data = {
                 user_id: +data.req.user_id,
                 github_user_id: data.params.github_user_id
