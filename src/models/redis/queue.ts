@@ -143,13 +143,12 @@ webhookQueue.process("process-webhook", async (job: Job<any>, done) => {
             payload,
             source_type: sourceType
         });
-        console.log("event detils :::: ", event)
+
         if (
             event === "workflow_run" &&
             payload.action === "completed" &&
             payload.workflow_run?.conclusion === "failure"
         ) {
-            console.log("HI BUDDY!")
             await webhookQueue.add("process-failed-build", {
                 repoDbId: repo.id,
                 githubRepoId,
