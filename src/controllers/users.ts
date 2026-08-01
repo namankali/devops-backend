@@ -1,11 +1,14 @@
 import moment from "moment";
-import { generateAccessToken, hashPassword, isValidPassword, refreshToken } from "../helper/secret_functions";
-import { fetch_single_user_by_email, insert_user } from "../models/pg/users";
-import { LoginResponseType, Logout, Signin, UserSignup } from "../utils/interfaces";
+import jwt from "jsonwebtoken"
+import { decryptForAccessToken, decryptForRefreshToken, generateAccessToken, hashPassword, isValidPassword, refreshToken } from "../helper/secret_functions";
+import { fetch_single_user_by_email, insert_user, profile } from "../models/pg/users";
+import { LoginResponseType, Logout, Signin, UserProfile, UserSignup } from "../utils/interfaces";
 import { ResponseBuilder } from "../utils/responseBuilder";
 import { ApiResponse } from "../utils/types";
 import { throwError } from "./common";
-import { insert_session, update_session } from "../models/pg/sessions";
+
+import { insert_session, update_session, findByRefreshToken } from "../models/pg/sessions";
+import { JWT_SECRET } from "../helper/configHelper";
 
 export class UserController {
     constructor() { }
@@ -117,15 +120,16 @@ export class UserController {
         }
     }
 
-    async signout(data: Logout): Promise<ApiResponse<void>> {
+    async signout(data: any): Promise<ApiResponse<void>> {
         try {
-            const session_token = data.req["refresh-token"]
-            if (!session_token || session_token.length === 0) {
-                return throwError("Refresh token was not found", 400)
+            console.log("incoming controller data", data)
+            const session_id = data.req.session_id
+            if (!session_id) {
+                return throwError("Session_id not found", 400)
             }
 
-            await update_session(session_token)
-
+            const query_response = await update_session(session_id)
+            console.log("query_response", query_response)
             return new ResponseBuilder<void>()
                 .setSignature("AI-DEVOPS")
                 .success(undefined, "logged out successfully", 200);
@@ -133,6 +137,77 @@ export class UserController {
 
         } catch (error) {
             console.log(error)
+            throw throwError("Something went wrong");
+        }
+    }
+
+    async profile(data: any): Promise<ApiResponse<UserProfile>> {
+        try {
+
+            const model_response = await profile(data.req.user_id)
+
+            return new ResponseBuilder<UserProfile>()
+                .setSignature("AI-DEVOPS")
+                .success(model_response[0], "profile data fetched", 200);
+        } catch (error) {
+            console.log(error)
+            throw throwError("Something went wrong");
+        }
+    }
+
+    async refresh(data: any): Promise<ApiResponse<Record<string, any>>> {
+        try {
+            console.log("refresh token", data)
+            const refreshToken = data.req?.["refresh-token"] || data.token;
+
+            if (!refreshToken) {
+                return new ResponseBuilder<any>()
+                    .setSignature("AI-DEVOPS")
+                    .success(undefined, "Refresh token missing", 401);
+            }
+
+            let decoded: any;
+
+            try {
+                decoded = jwt.verify(refreshToken, JWT_SECRET);
+            } catch (err: any) {
+
+                if (err.name === "TokenExpiredError") {
+
+                    await update_session(data.req.session_id);
+
+                    return new ResponseBuilder<any>()
+                        .setSignature("AI-DEVOPS")
+                        .success(undefined, "Refresh token expired", 401);
+                }
+
+                return new ResponseBuilder<any>()
+                    .setSignature("AI-DEVOPS")
+                    .success(undefined, "Refresh token invalid", 401);
+            }
+
+            const decrypted = await decryptForRefreshToken(decoded.encryptedData);
+
+            const session = await findByRefreshToken(refreshToken);
+
+            if (!Array.isArray(session) || session.length === 0) {
+                return new ResponseBuilder<any>()
+                    .setSignature("AI-DEVOPS")
+                    .success(undefined, "Session inactive or not found", 401);
+            }
+            console.log("decrypted refresh token data", decrypted)
+            const newAccessToken = await generateAccessToken({ ...decrypted, "session_id": session?.[0].id });
+
+            return new ResponseBuilder<Record<string, any>>()
+                .setSignature("AI-DEVOPS")
+                .success(
+                    { accessToken: newAccessToken },
+                    "New access token generated",
+                    201
+                );
+
+        } catch (error) {
+            console.log(error);
             throw throwError("Something went wrong");
         }
     }
@@ -167,7 +242,7 @@ export class UserController {
     //     }
     // }
 
-        async add_member(data: any): Promise<ApiResponse<void>> {
+    async add_member(data: any): Promise<ApiResponse<void>> {
         try {
             const authorization = data.req;
             if (authorization.role !== "admin") throwError("Unauthorized", 401);

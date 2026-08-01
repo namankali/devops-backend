@@ -14,8 +14,6 @@ export class Chats {
     // initialise Chat
     async chat(data: any): Promise<ApiResponse<Record<string, string>>> {
         try {
-            console.log("contorler data", data)
-
             const insert_con_result = await insert_conversation({
                 user_id: data.req.user_id,
                 title: data.body?.message.slice(0, 30) || "N/A"

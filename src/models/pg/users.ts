@@ -59,7 +59,22 @@ const insert_user = async (data: UserSignup) => {
     }
 }
 
+const profile = async (user_id: number) => {
+    try {
+        const query = db.select([
+            `${table}.id`,
+            `${table}.full_name`,
+            `${table}.username`,
+        ]).from(table).where("id", user_id)
+
+        return await query
+    } catch (error) {
+        throw error
+    }
+}
+
 export {
     fetch_single_user_by_email,
-    insert_user
+    insert_user,
+    profile
 }

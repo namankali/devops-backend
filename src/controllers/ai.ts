@@ -10,7 +10,6 @@ export class AIController {
 
     async fetch_workflow_logs(data: any): Promise<ApiResponse<GetAIWorkflowOutput[] | GETAIWorflowRepos[] | string[]>> {
         try {
-            console.log("incoming data", data)
             if (data.query.repos.toLowerCase() === "true") {
                 const repos_data = await get_all_repos(+data.req.user_id)
 

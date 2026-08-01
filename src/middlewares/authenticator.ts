@@ -11,8 +11,7 @@ export const authenticator = async (
     next: NextFunction
 ) => {
     try {
-        const refreshToken = req.cookies["refresh-token"] || req.body?.token;
-
+        const refreshToken = req.cookies?.["refresh-token"] || req.body?.token;
         const accessToken = req.headers?.["x-access-token"]
         if (typeof accessToken !== "string") return res.status(401).json({
             message: "Access token missing",

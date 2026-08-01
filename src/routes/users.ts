@@ -3,6 +3,7 @@ import { UserController } from "../controllers/users"
 import { authenticator } from "../middlewares/authenticator"
 import { CustomRequest } from "../utils/interfaces"
 import { isAdmin } from "../middlewares/isAdmin"
+import { ActionRequest } from "../utils/types"
 
 const router = express.Router()
 const userController = new UserController()
@@ -80,6 +81,55 @@ router.patch(
         }
     });
 
+router.get("/v1/profile",
+    [authenticator, isAdmin],
+    async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            let data: Partial<ActionRequest> = {
+                body: req.body,
+                req: req.data
+            }
+
+            const result = await userController.profile(data)
+            res.status(result.status).send(result)
+        } catch (error) {
+            next(error)
+        }
+    })
+
+router.post("/v1/logout",
+    [authenticator],
+    async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            let data: Partial<ActionRequest> = {
+                body: req.body,
+                req: req.data
+            }
+
+            const result = await userController.signout(data)
+            res.status(result.status).send(result)
+        } catch (error) {
+            next(error)
+        }
+    })
+
+router.post(
+    "/v1/refresh",
+    authenticator,
+    async (req: CustomRequest, res: Response, next: NextFunction) => {
+        try {
+            let data = { ...req.body }
+            data.req = req.data
+
+            const result = await userController.refresh(data)
+            res.status(result.status).send(result)
+
+        } catch (error) {
+            next(error)
+        }
+    }
+)
+
 // router.post(
 //     "/v1/add/team",
 //     authenticator,
@@ -116,17 +166,17 @@ router.post(
     "/v1/add_member",
     [authenticator, isAdmin],
     async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
-    try {
-        let data = { ...req.body }
-        data.req = req.data
+        try {
+            let data = { ...req.body }
+            data.req = req.data
 
-        const result = await userController.add_member(data)
+            const result = await userController.add_member(data)
 
-        res.status(result.status).send(result)
-    } catch (error) {
-        next(error)
-    }
-})
+            res.status(result.status).send(result)
+        } catch (error) {
+            next(error)
+        }
+    })
 
 
 export default router

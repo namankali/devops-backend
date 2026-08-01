@@ -25,15 +25,16 @@ const insert_session = async (data: SessionData): Promise<{ id: number }> => {
     }
 }
 
-const update_session = async (session_token: string): Promise<{ id: number }> => {
+const update_session = async (session_id: number): Promise<{ id: number }> => {
     try {
         const query = db(table)
             .update({
                 "logout_time": db.raw(`NOW()`),
                 "session_duration_sec": db.raw(`EXTRACT(EPOCH from (NOW() - login_time))`)
             })
-            .where("session_token", session_token)
+            .where("id", session_id)
             .returning("id")
+
         const result = await query
         return result[0]
     } catch (error) {
@@ -51,8 +52,18 @@ const get_session_by_id = async (id: number) => {
     }
 }
 
+const findByRefreshToken = async (refresh_token: string) => {
+    try {
+        const query = db.select(["*"]).from(table).where("session_token", refresh_token)
+        return query
+    } catch (error) {
+        throw error
+    }
+}
+
 export {
     insert_session,
     update_session,
-    get_session_by_id
+    get_session_by_id,
+    findByRefreshToken
 }

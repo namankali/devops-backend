@@ -47,6 +47,12 @@ interface Logout {
     token: string
 }
 
+interface UserProfile {
+    id: number | undefined,
+    full_name: string | undefined
+    username: string | undefined
+}
+
 interface RefreshToken {
     email: string,
     user_id: number,
@@ -373,5 +379,6 @@ export {
     SecretDetails,
     GetInfoNamespaces,
     namespaceDetails,
-    DefaultClusterData
+    DefaultClusterData,
+    UserProfile
 }

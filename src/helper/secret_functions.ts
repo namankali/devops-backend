@@ -75,6 +75,7 @@ const decryptForAccessToken = async (encryptedData: string) => {
 
     let decryptedData = decipher.update(encryptedData, 'hex', 'utf-8');
     decryptedData += decipher.final('utf-8');
+    
     return JSON.parse(decryptedData);
 }
 
@@ -124,6 +125,7 @@ const encryptForRefreshToken = async (data: RefreshToken): Promise<string> => {
 
 }
 
+
 const refreshToken = async (data: RefreshToken): Promise<string> => {
     const encryptedData = await encryptForRefreshToken(data)
     const token = jwt.sign(
@@ -136,6 +138,39 @@ const refreshToken = async (data: RefreshToken): Promise<string> => {
         })
     return token
 }
+
+const decryptForRefreshToken = async (encryptedData: string): Promise<RefreshToken> => {
+    if (!encryptedData) {
+        throw new Error("No encrypted data provided for decryption");
+    }
+
+    const secretKey = Buffer.from(ENCRYPTION_SECRET, "utf-8");
+
+    if (secretKey.length !== 32) {
+        throw new Error(
+            "Invalid encryption key length. AES-256-CBC requires a 32-byte key."
+        );
+    }
+
+    const iv = Buffer.from(ENCRYPTION_IV, "utf-8");
+
+    if (iv.length !== 16) {
+        throw new Error(
+            "Invalid IV length. AES-CBC requires a 16-byte IV."
+        );
+    }
+
+    const decipher = crypto.createDecipheriv(
+        ENCRYPTION_ALGO,
+        secretKey,
+        iv
+    );
+
+    let decrypted = decipher.update(encryptedData, "hex", "utf-8");
+    decrypted += decipher.final("utf-8");
+
+    return JSON.parse(decrypted);
+};
 
 const encryptForAccessToken = async (data: AccessTokenData) => {
     const secretKey = Buffer.from(ACCESS_TOKEN_SECRET, "base64")
@@ -197,5 +232,6 @@ export {
     hashPassword,
     isValidPassword,
     refreshToken,
-    verifyGithubSignature
+    verifyGithubSignature,
+    decryptForRefreshToken
 }

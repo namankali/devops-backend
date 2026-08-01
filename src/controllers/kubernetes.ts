@@ -203,7 +203,6 @@ export class Kubernetes {
 
     async getNamespaces(data: any): Promise<ApiResponse<NamespaceResponse[]>> {
         try {
-            console.log("incoming controller data", data)
             let cluster_info
             if (data.hasOwnProperty("provider") && data.provider && data.hasOwnProperty("environment") && data.environment) {
                 cluster_info = await cluster_id_by_other_details(data.req.user_id, data.provider, data.environment)
