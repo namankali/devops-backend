@@ -73,6 +73,12 @@ const GITHUB_BASE_URL = (() => {
     return api
 })()
 
+const PYTHON_MSRV = (() => {
+    const token = process.env.PYTHON_MSRV
+    if (!token) throw new Error("Missing PYTHON_MSRV")
+    return token
+})()
+
 const GITHUB_TOKEN = (() => {
     const token = process.env.GITHUB_TOKEN
     if (!token) throw new Error("Missing GITHUB_TOKEN")
@@ -118,5 +124,6 @@ export {
     GITHUB_TOKEN_ORG,
     GITHUB_ENCRYPTION_KEY_LENGTH,
     GITHUB_ENCRYPTION_ALGO,
-    GITHUB_ENCRYPTION_KEY
+    GITHUB_ENCRYPTION_KEY,
+    PYTHON_MSRV
 }

@@ -7,6 +7,7 @@ import { ResponseBuilder } from "../utils/responseBuilder";
 import { ApiResponse } from "../utils/types";
 import { throwError } from "./common";
 import axios from "axios";
+import { PYTHON_MSRV } from "../helper/configHelper";
 
 export class Chats {
     constructor() { }
@@ -177,7 +178,7 @@ export class Chats {
             try {
                 const py_msrv_result = await axios({
                     method: "post",
-                    url: `${process.env.PYTHON_MSRV}/ch/chat`,
+                    url: `${PYTHON_MSRV}/ch/chat`,
                     data: {
                         message: data.body.message
                     },
