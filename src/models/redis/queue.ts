@@ -6,7 +6,7 @@ import { get_repo, insert_repo, update_repo_github_accounts_id } from "../pg/rep
 import { insert_github_event } from "../pg/github_events"
 import { get_github_account_details, get_user_account_details, update_github_access_token } from "../pg/github"
 import { decryptGithubToken } from "../../helper/secret_functions"
-import { GITHUB_ENCRYPTION_KEY } from "../../helper/configHelper"
+import { GITHUB_ENCRYPTION_KEY, PYTHON_MSRV } from "../../helper/configHelper"
 
 interface JobDataOrgWebhookCreation {
     github_account_id: number,
@@ -22,7 +22,7 @@ const webhookQueue = new Bull("webhook-queue", {
         // password: "Naman@1234",
         // username: process.env.REDIS_USER,
         host: "127.0.0.1",
-        port: 3456,
+        port: 6300,
         password: "demopasscheck@123",
     },
     defaultJobOptions: {
@@ -265,7 +265,7 @@ webhookQueue.process("process-failed-build", async (job, done) => {
 
             console.log("logs", logs)
 
-            await axios.post(`${process.env.PYTHON_MSRV}/rag/ingest-build-failure`, {
+            await axios.post(`${PYTHON_MSRV}/rag/ingest-build-failure`, {
                 repo_id: repoDbId,
                 repo_name: `${owner}/${repo}`,
                 run_id: runId,
