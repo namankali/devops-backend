@@ -17,7 +17,8 @@ export class Chats {
         try {
             const insert_con_result = await insert_conversation({
                 user_id: data.req.user_id,
-                title: data.body?.message.slice(0, 30) || "N/A"
+                title: data.body?.message.slice(0, 30) || "N/A",
+                branch: data.params.branch
             })
 
             const conversation_id: number = insert_con_result[0].id
@@ -32,16 +33,14 @@ export class Chats {
                     content: data.body.message,
                     role: "user",
                     conversation_id: conversation_id,
-                    created_at: moment().format(),
-                    updated_at: moment().format()
+                    branch: data.params.branch
                 },
                 {
                     content: "",
                     role: "assistant",
                     conversation_id: conversation_id,
                     status: "streaming",
-                    created_at: moment().format(),
-                    updated_at: moment().format()
+                    branch: data.params.branch
                 }
             ] as InsertMessage[]
             const insert_user_messaages = await insert_message(messages)
@@ -118,7 +117,8 @@ export class Chats {
             const db_result = await get_messages(
                 data.req.user_id,
                 data.query?.offset ? data.query.offset : 0,
-                data.query?.limit ? data.query.limit : 10
+                data.query?.limit ? data.query.limit : 10,
+                data.params.branch
             ) as GetMessagesAdmin[]
 
             return new ResponseBuilder<GetMessagesAdmin[]>()
@@ -145,6 +145,7 @@ export class Chats {
                     content: data.body.message,
                     role: "user",
                     conversation_id: data.body.conversation_id,
+                    branch: data.params.branch,
                     created_at: moment().format(),
                     updated_at: moment().format()
                 },
@@ -153,10 +154,12 @@ export class Chats {
                     role: "assistant",
                     conversation_id: data.body.conversation_id,
                     status: "streaming",
+                    branch: data.params.branch,
                     created_at: moment().format(),
                     updated_at: moment().format()
                 }
             ]
+            console.log("messages row", msgs_row)
 
             const insert_user_messaages = await insert_message(msgs_row)
 
@@ -189,6 +192,7 @@ export class Chats {
 
                 aiResponseText = py_msrv_result.data?.response || "";
             } catch (error) {
+                console.log("Error: ", error)
                 await update_ai_run(ai_run_id, {
                     status: "failed",
                     completed_at: moment().toISOString(),

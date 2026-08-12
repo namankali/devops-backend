@@ -106,6 +106,8 @@ export class RepositoriesController {
                 GITHUB_ENCRYPTION_KEY
             )
 
+            console.log("token_data", token)
+
             const db_repos = await get_all_repos(user_id)
 
             const result = await Promise.all(

@@ -9,11 +9,12 @@ import { Chats } from "../controllers/chats"
 const router = express.Router()
 const chat_controller = new Chats()
 
-router.post("/v1/chat", [authenticator, isAdmin], async (req: CustomRequest, res: Response, next: NextFunction) => {
+router.post("/v1/chat/:branch", [authenticator, isAdmin], async (req: CustomRequest, res: Response, next: NextFunction) => {
     try {
         let data: Partial<ActionRequest> = {
             body: req.body,
-            req: req.data
+            req: req.data,
+            params: req.params
         }
         const result = await chat_controller.chat(data)
 
@@ -24,12 +25,13 @@ router.post("/v1/chat", [authenticator, isAdmin], async (req: CustomRequest, res
 
 })
 
-router.get("/v1/stream", [authenticator, isAdmin], async (req: CustomRequest, res: Response, next: NextFunction) => {
+router.get("/v1/stream/:branch", [authenticator, isAdmin], async (req: CustomRequest, res: Response, next: NextFunction) => {
     try {
         let data: Partial<ActionRequest> = {
             body: req.body,
             req: req.data,
-            query: req.query
+            query: req.query,
+            params: req.params
         }
         const result = await chat_controller.stream(data)
 
@@ -39,11 +41,12 @@ router.get("/v1/stream", [authenticator, isAdmin], async (req: CustomRequest, re
     }
 
 })
-router.patch("/v1/new/message", [authenticator, isAdmin], async (req: CustomRequest, res: Response, next: NextFunction) => {
+router.patch("/v1/new/message/:branch", [authenticator, isAdmin], async (req: CustomRequest, res: Response, next: NextFunction) => {
     try {
         let data: Partial<ActionRequest> = {
             body: req.body,
             req: req.data,
+            params: req.params
         }
         const result = await chat_controller.update_conversation(data)
 

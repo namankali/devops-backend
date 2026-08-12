@@ -1,5 +1,6 @@
+import moment from "moment"
 import { data_for_ai_workflow } from "../models/pg/github_events"
-import { get_all_repos, get_repo_by_name } from "../models/pg/repositories"
+import { get_all_repos, get_repo_build_details_by_date, get_repo_build_status, get_repo_by_name } from "../models/pg/repositories"
 import { GETAIWorflowRepos, GetAIWorkflow, GetAIWorkflowOutput } from "../utils/interfaces"
 import { ResponseBuilder } from "../utils/responseBuilder"
 import { ApiResponse } from "../utils/types"
@@ -10,21 +11,34 @@ export class AIController {
 
     async fetch_workflow_logs(data: any): Promise<ApiResponse<GetAIWorkflowOutput[] | GETAIWorflowRepos[] | string[]>> {
         try {
+            console.log("incoming data", data)
             if (data.query.repos.toLowerCase() === "true") {
                 const repos_data = await get_all_repos(+data.req.user_id)
 
                 return new ResponseBuilder<GETAIWorflowRepos[]>()
                     .setSignature("AI-DEVOPS")
                     .success(repos_data, "Data for LLM")
-            } else if (data.query.hasOwnProperty("repo_name") && data.query.repo_name.length > 0) {
-                
-                const repo_details = await get_repo_by_name(data.query?.repo_name || "")
+            } else if (data.query.hasOwnProperty("repo_name") && data.query.repo_name.length > 0 && !data.query.hasOwnProperty("start_date")) {
+                const repo_details = await get_repo_build_status(data.query?.repo_name || "", data.query.branch_name || "")
+
+                return new ResponseBuilder<string[]>()
+                    .setSignature("AI-DEVOPS")
+                    .success(repo_details, "Data for LLM")
+            } else if (data.query.hasOwnProperty("start_date") && data.query.hasOwnProperty("end_date") && data.query.hasOwnProperty("repo_name") && data.query.repo_name.length > 0) {
+                const repo_details = await get_repo_build_details_by_date({
+                    repo_name: data.query.repo_name,
+                    branch_name: data.query.branch_name || "development",
+                    start_date: moment(data.query.start_date).format("YYYY-MM-DD"),
+                    end_date: moment(data.query.end_date).format("YYYY-MM-DD"),
+
+                })
 
                 return new ResponseBuilder<string[]>()
                     .setSignature("AI-DEVOPS")
                     .success(repo_details, "Data for LLM")
             }
             else {
+                console.log("else is executing")
                 const db_result = await data_for_ai_workflow({
                     branch_name: data.branch ?? "main"
                 } as GetAIWorkflow)

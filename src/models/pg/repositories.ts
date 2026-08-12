@@ -1,3 +1,4 @@
+import moment from "moment"
 import { InsertRepo } from "../../utils/interfaces"
 
 const db = require("./db")
@@ -16,6 +17,7 @@ const get_repo = async (github_repo_id: number) => {
 
 const get_repo_by_name = async (repo_name: string) => {
     try {
+        console.log("repo_name", repo_name)
         const query = db.raw(`
               SELECT
                 id,
@@ -32,20 +34,100 @@ const get_repo_by_name = async (repo_name: string) => {
                 end as repo_language
                 from repositories
                 LEFT JOIN LATERAL(
-                SELECT DISTINCT  on (payload -> 'workflow_job' ->> 'run_id')
-                    (payload -> 'workflow_job' ->> 'run_id'):: bigint as run_id,
+                SELECT DISTINCT  on (payload -> 'workflow_run' ->> 'id')
+                    (payload -> 'workflow_job' ->> 'status'):: bigint as run_id,
                     (payload -> 'repository' -> 'owner' ->> 'type') as registered_under,
                     (payload -> 'repository' ->> 'language') as repo_language
             from github_events
             where event_type = 'workflow_job'
             and payload -> 'repository' ->> 'name' = '${repo_name}'
-            ORDER BY (payload -> 'workflow_job' ->> 'run_id'), (payload -> 'workflow_job' ->> 'updated-at') DESC 
+            ORDER BY (payload -> 'workflow_job' ->> 'run_id'), (payload -> 'workflow_job' ->> 'updated_at') DESC 
             LIMIT 1
               ) as ge on TRUE
             where name = '${repo_name}'
             `)
         const result = await query
         return result.rows
+    } catch (error) {
+        throw error
+    }
+}
+
+const get_repo_build_status = async (repo_name: string, branch_name: string = "development") => {
+    try {
+        console.log("repo_name", repo_name, "branch_name", branch_name)
+        const query = db.raw(`
+                SELECT
+                  id,
+                  (payload->'workflow_run'->>'id')::bigint AS run_id,
+                  payload->'workflow_run'->>'status' AS status,
+                  payload->'workflow'->>'name' AS workflow_name,
+                  payload->'workflow_run'->>'conclusion' AS conclusion,
+                  payload->'workflow_run'->>'head_sha' AS commit_sha,
+                  payload->'workflow_run'->>'head_branch' AS branch,
+                  payload->'workflow_run'->>'created_at' AS created_at
+                FROM github_events
+                WHERE event_type = 'workflow_run'
+                  AND payload->'repository'->>'name' = '${repo_name}'
+                  and payload -> 'workflow_run' ->> 'head_branch' = '${branch_name}'
+                ORDER BY
+                  (payload->'workflow_run'->>'updated_at')::timestamptz DESC
+                LIMIT 1;
+            `)
+
+        const result = await query
+        return result.rows
+    } catch (error) {
+        throw error
+    }
+}
+
+const get_repo_build_details_by_date = async (data: any) => {
+    try {
+        let query;
+        const start_date = moment(data.start_date)
+        const end_date = moment(data.end_date)
+        const date_diff = end_date.diff(start_date, "days")
+
+        let sub_str = ""
+
+        if (Array.isArray(data.repo_name)) {
+            sub_str += `and (payload -> 'repository' ->> 'name') in (${data.repo_name.map((repo: string) => `'${repo}'`)})`
+        } else {
+            sub_str += `and (payload -> 'repository' ->> 'name') = '${data.repo_name}'`
+        }
+
+        if (date_diff === 0) {
+            query = db.raw(`
+                    SELECT DISTINCT on (payload -> 'workflow_run' ->> 'id')
+                      (payload -> 'workflow_run' ->> 'id') as run_id,
+                        (payload -> 'workflow_run' ->> 'run_number')::int AS run_number,
+                        payload -> 'workflow_run' ->> 'status' AS status,
+                        payload -> 'workflow_run' ->> 'conclusion' AS conclusion,
+                        payload -> 'workflow_run' ->> 'run_attempt' AS run_attempt,
+                        payload -> 'workflow_run' ->> 'name' AS workflow_run_name,
+                        payload -> 'repository' ->> 'name' AS repo_name,
+                        payload -> 'workflow_run' ->> 'head_branch' AS branch,
+                        payload -> 'workflow_run' ->> 'head_sha' AS commit_sha,
+                        payload -> 'workflow_run' ->> 'display_title' AS display_title,
+                        payload -> 'workflow_run' ->> 'html_url' AS html_url,
+                        payload -> 'workflow_run' ->> 'created_at' AS created_at,
+                        payload -> 'workflow_run' ->> 'updated_at' AS updated_at
+                    from github_events as ge
+                    where ge.event_type = 'workflow_run'
+                    and (payload -> 'workflow_run' ->> 'conclusion') = 'failure'
+                    and (payload -> 'workflow_run' ->> 'head_branch') = '${data.branch_name}'
+                    ${sub_str}
+                    and (payload -> 'workflow_run' ->> 'updated_at'):: DATE = '${data.start_date}'
+                    order by (payload -> 'workflow_run' ->> 'id') desc, received_at DESC
+                `)
+
+            const result = await query
+            return result.rows
+        } else {
+            console.log("Coming soon")
+        }
+
     } catch (error) {
         throw error
     }
@@ -234,5 +316,7 @@ export {
     insert_repo,
     update_repo_github_accounts_id,
     get_repo_details_dashboard,
-    detailed_repos_data_dashboard
+    detailed_repos_data_dashboard,
+    get_repo_build_status,
+    get_repo_build_details_by_date
 }

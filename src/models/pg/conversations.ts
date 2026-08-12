@@ -4,7 +4,8 @@ const table = "conversations"
 
 interface InsertConversation {
     user_id: number,
-    title: string
+    title: string,
+    branch: string
 }
 
 const insert_conversation = async (data: InsertConversation) => {
@@ -12,6 +13,7 @@ const insert_conversation = async (data: InsertConversation) => {
         const query = db(table).insert({
             user_id: data.user_id,
             title: data.title,
+            branch: data.branch
 
         }).returning(["id"])
 
@@ -21,6 +23,6 @@ const insert_conversation = async (data: InsertConversation) => {
     }
 }
 
-export { 
+export {
     insert_conversation
 }

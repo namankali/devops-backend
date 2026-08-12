@@ -3,7 +3,6 @@ const table = "ai_runs"
 
 const insert_ai_run_query = async (data: any) => {
     try {
-        console.log("ai runs data fro insertion", data)
         const query = db(table).insert(data).returning(["id"])
 
         return await query

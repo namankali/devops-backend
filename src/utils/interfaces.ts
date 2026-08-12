@@ -121,9 +121,10 @@ interface InsertMessage {
     conversation_id: number,
     role: string,
     content: string,
+    branch: string,
     status?: string,
-    created_at: string,
-    updated_at: string
+    created_at?: string,
+    updated_at?: string
 }
 
 interface InsertAIRuns {

@@ -214,9 +214,12 @@ export class ActionController {
                 user_id: +data.req.user_id
             }
             const encrypt_github_token = encryptGithubToken(data.body.githubAccessToken, GITHUB_ENCRYPTION_KEY)
+            console.log("encrypt data", encrypt_github_token)
 
             const update_data = {
-                access_token: encrypt_github_token.content
+                access_token: encrypt_github_token.content,
+                iv: encrypt_github_token.iv,
+                tag: encrypt_github_token.tag
             }
 
             await update_github_access_token(where_data, update_data)

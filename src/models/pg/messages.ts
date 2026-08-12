@@ -23,25 +23,25 @@ const update_message = async (id: number, data: any) => {
     }
 }
 
-const get_messages = async (id: number, offset: number = 0, limit: number = 20): Promise<GetMessagesAdmin[]> => {
+const get_messages = async (id: number, offset: number = 0, limit: number = 20, branch: string): Promise<GetMessagesAdmin[]> => {
     try {
         const query = db.raw(`
                 SELECT
                     cs.id as conversation_id,
                     cs.title,
-                    COALESCE( 
-                        json_agg(ms.*) FILTER (where ms.id is not null)
-                    ,'[]') as messages
+                    COALESCE(json_agg(ms.*) FILTER (where ms.id is not null),'[]') as messages
                 FROM conversations cs
                 LEFT JOIN LATERAL (
                     SELECT
                         *
                     FROM messages ms
                     where conversation_id = cs.id
+                    and branch = '${branch}'
                     order by ms.id DESC
                     LIMIT ${limit} OFFSET ${offset}
                     ) ms on TRUE
                 where cs.user_id = ${id}
+                and cs.branch = '${branch}'
                 GROUP by cs.id, cs.title
             `)
 
