@@ -130,7 +130,7 @@ webhookQueue.process("process-webhook", async (job: Job<any>, done) => {
 
         if (payload.action === "deleted") {
             const update_repo = await update_repo_github_accounts_id({
-                github_repo_id: githubRepoId
+                github_repo_id: githubRepoId,
                 id: repo.github_account_id
             }, false)
 

@@ -64,7 +64,7 @@ jobs:
             sudo apt-get install -y trivy
 
         - name: Scan docker image
-          run: trivy image  --severity HIGH,CRITICAL --ignore-unfixed devops-backend:latest
+          run: trivy   --severity HIGH,CRITICAL --ignore-unfixed devops-backend:latest
 
         - name: Build and push image
           run: docker buildx build --platform linux/amd64 -t namankali/devops-backend:latest --push .
