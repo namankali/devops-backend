@@ -130,7 +130,7 @@ webhookQueue.process("process-webhook", async (job: Job<any>, done) => {
 
         if (payload.action === "deleted") {
             const update_repo = await update_repo_github_accounts_id({
-                github_repo_id: githubRepoId
+                github_repo_id: githubRepoId,
                 id: repo.github_account_id
             }, false)
 
@@ -152,7 +152,6 @@ webhookQueue.process("process-webhook", async (job: Job<any>, done) => {
             await webhookQueue.add("process-failed-build", {
                 repoDbId: repo.id,
                 githubRepoId,
-                runAttempt: payload.workflow_run.run_attempt,
                 owner: payload.repository.owner.login,
                 repo: payload.repository.name,
                 runId: payload.workflow_run.id,
@@ -162,8 +161,6 @@ webhookQueue.process("process-webhook", async (job: Job<any>, done) => {
                 commitSha: payload.workflow_run.head_sha,
                 htmlUrl: payload.workflow_run.html_url,
                 githubAccountId: repo.github_account_id,
-                created_at: payload.workflow_run.created_at,
-                updated_at: payload.workflow_run.updated_at,
             });
         }
 
@@ -224,15 +221,11 @@ webhookQueue.process("process-failed-build", async (job, done) => {
             repo,
             runId,
             repoDbId,
-            runNumber,
-            runAttempt,
             githubAccountId,
             workflowName,
             branch,
             commitSha,
             htmlUrl,
-            created_at,
-            updated_at
         } = job.data;
 
         const account = await get_github_account_details({ id: githubAccountId });
@@ -242,8 +235,6 @@ webhookQueue.process("process-failed-build", async (job, done) => {
             iv: account.iv,
             tag: account.tag,
         }, GITHUB_ENCRYPTION_KEY);
-
-        console.log("token gthub ->>> ", token)
 
         const octokit = new Octokit({ auth: token });
 
@@ -255,7 +246,7 @@ webhookQueue.process("process-failed-build", async (job, done) => {
                 run_id: runId,
             }
         );
-
+        
         const failedJobs = jobsRes.data.jobs.filter(
             (j) => j.conclusion === "failure"
         );
@@ -272,27 +263,24 @@ webhookQueue.process("process-failed-build", async (job, done) => {
 
             const logs = String(logsRes.data);
 
+            console.log("logs", logs)
+
             await axios.post(`${PYTHON_MSRV}/rag/ingest-build-failure`, {
                 repo_id: repoDbId,
                 repo_name: `${owner}/${repo}`,
                 run_id: runId,
-                run_number: runNumber,
-                run_attempt: runAttempt,
                 job_id: failedJob.id,
                 job_name: failedJob.name,
                 workflow_name: workflowName,
                 branch,
                 commit_sha: commitSha,
                 html_url: htmlUrl,
-                logs: logs,
-                created_at,
-                updated_at
+                logs:logs,
             });
         }
 
         done(null, true);
     } catch (error) {
-        console.log("process process-failed-build Error->> ", error)
         done(error as Error);
     }
 });
