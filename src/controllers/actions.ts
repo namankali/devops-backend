@@ -354,9 +354,10 @@ export class ActionController {
             }))
 
             let stored_repos_data = await get_all_repos(data.req.user_id)
-            stored_repos_data = stored_repos_data.map((obj: any) => obj.github_repo_id)
+            
+            stored_repos_data = stored_repos_data.map((obj: any) => +obj.github_repo_id)
 
-            const unregistered_repos = githubRepos.filter((obj: any) => !githubRepos.includes(+obj.github_repo_id)) as UnregisteredRepoResponse[]
+            const unregistered_repos = githubRepos.filter((obj: any) => !stored_repos_data.includes(+obj.github_repo_id)) as UnregisteredRepoResponse[]
 
             return new ResponseBuilder<UnregisteredRepoResponse[]>().setSignature("AI-DEVOPS").success(unregistered_repos, "done")
         } catch (error: any) {

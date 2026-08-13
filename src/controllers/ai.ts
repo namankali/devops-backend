@@ -1,6 +1,6 @@
 import moment from "moment"
-import { data_for_ai_workflow } from "../models/pg/github_events"
-import { get_all_repos, get_repo_build_details_by_date, get_repo_build_status, get_repo_by_name } from "../models/pg/repositories"
+import { data_for_ai_workflow, get_repo_build_status } from "../models/pg/github_events"
+import { get_all_repos, get_repo_build_details_by_date, get_repo_by_name } from "../models/pg/repositories"
 import { GETAIWorflowRepos, GetAIWorkflow, GetAIWorkflowOutput } from "../utils/interfaces"
 import { ResponseBuilder } from "../utils/responseBuilder"
 import { ApiResponse } from "../utils/types"
@@ -19,7 +19,13 @@ export class AIController {
                     .setSignature("AI-DEVOPS")
                     .success(repos_data, "Data for LLM")
             } else if (data.query.hasOwnProperty("repo_name") && data.query.repo_name.length > 0 && !data.query.hasOwnProperty("start_date")) {
-                const repo_details = await get_repo_build_status(data.query?.repo_name || "", data.query.branch_name || "")
+
+                const repo_details = await get_repo_build_status(
+                    data.query?.repo_name,
+                    data.query.branch_name || "",
+                    !!data.query.count,
+                    data.query.build
+                )
 
                 return new ResponseBuilder<string[]>()
                     .setSignature("AI-DEVOPS")

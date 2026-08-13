@@ -192,12 +192,90 @@ const data_for_ai_workflow = async (data: GetAIWorkflow): Promise<GetAIWorkflowO
     }
 }
 
-const get_logs_for_ai = async (data: any) => {
+const get_repo_build_status = async (repo_name: string | string[], branch_name: string = "", count: boolean = false, build: string = "total") => {
     try {
-        const failed = data.hasOwnProperty("failed") ? true : false
-        const query = db.raw(`
-                
-        `)
+        console.log("repo_name", repo_name, "branch_name", branch_name, "count", count)
+        let query;
+        const __query_ = Array.isArray(repo_name)
+            ? `WHERE payload->'repository'->>'name' in (${repo_name.map((repo) => `'${repo}'`)})`
+            : `WHERE payload->'repository'->>'name' = '${repo_name}'`
+        const __query = Array.isArray(repo_name)
+            ? `AND payload->'repository'->>'name' in ${repo_name.map((repo) => `'${repo}'`)}`
+            : `AND payload->'repository'->>'name' = '${repo_name}'`
+
+        const branch_filter = branch_name
+            ? `AND (payload -> 'workflow_run' ->> 'head_branch') = '${branch_name}'`
+            : ""
+
+        const build_type = build === "failed"
+            ? `AND payload -> 'workflow_run' ->> 'conclusion' = 'failure'`
+            : build === "success"
+                ? `AND payload -> 'workflow_run' ->> 'conclusion' = 'success'`
+                : ""
+        if (count) {
+            query = db.raw(`
+                    with cte as(
+                        select DISTINCT on (payload -> 'workflow_run' ->> 'id')
+                          (payload -> 'workflow_run' ->> 'id') as run_id,
+                          (payload -> 'workflow_run' ->> 'run_number')::int AS run_number,
+                          payload -> 'workflow_run' ->> 'run_attempt' AS run_attempt,
+                          payload -> 'workflow_run' ->> 'name' AS workflow_run_name,
+                          payload -> 'repository' ->> 'name' AS repo_name,
+                          payload -> 'workflow_run' ->> 'head_branch' AS branch,
+                          payload -> 'workflow_run' ->> 'head_sha' AS commit_sha,
+                          payload -> 'workflow_run' ->> 'display_title' AS display_title,
+                          payload -> 'workflow_run' ->> 'created_at' AS created_at,
+                          payload -> 'workflow_run' ->> 'updated_at' AS updated_at
+                        From github_events
+                        ${__query_}
+                        ${branch_filter}
+                        ${build_type}
+                        order by (payload -> 'workflow_run' ->> 'id'), (payload -> 'workflow_run' ->> 'updated_at')::timestamptz DESC
+                        )
+
+
+                    select 
+                        count("run_id"),
+                        cte.repo_name,
+                        json_agg(
+                        json_build_object(
+                              'run_id', run_id,
+                                'run_number', run_number,
+                                'run_attempt', run_attempt,
+                                'workflow_run_name', workflow_run_name,
+                                'branch', branch,
+                                'commit_sha', commit_sha,
+                                'display_title', display_title,
+                                'created_at', created_at,
+                                'updated_at', updated_at
+                        ) order by cte.updated_at desc
+                      ) as builds
+                    from cte
+                    GROUP by cte.repo_name
+                `)
+        } else {
+            query = db.raw(`
+                SELECT
+                  id,
+                  (payload->'workflow_run'->>'id')::bigint AS run_id,
+                  payload->'workflow_run'->>'status' AS status,
+                  payload->'workflow'->>'name' AS workflow_name,
+                  payload->'workflow_run'->>'conclusion' AS conclusion,
+                  payload->'workflow_run'->>'head_sha' AS commit_sha,
+                  payload->'workflow_run'->>'head_branch' AS branch,
+                  payload->'workflow_run'->>'created_at' AS created_at
+                FROM github_events
+                WHERE event_type = 'workflow_run'
+                  ${__query}
+                  ${branch_name}
+                ORDER BY
+                  (payload->'workflow_run'->>'updated_at')::timestamptz DESC
+                LIMIT 1;
+            `)
+        }
+
+        const result = await query
+        return result.rows
     } catch (error) {
         throw error
     }
@@ -215,5 +293,5 @@ export {
     branch_build_info_query,
     build_duration_by_date,
     data_for_ai_workflow,
-    get_logs_for_ai
+    get_repo_build_status
 }

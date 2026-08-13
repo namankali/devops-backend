@@ -53,35 +53,6 @@ const get_repo_by_name = async (repo_name: string) => {
     }
 }
 
-const get_repo_build_status = async (repo_name: string, branch_name: string = "development") => {
-    try {
-        console.log("repo_name", repo_name, "branch_name", branch_name)
-        const query = db.raw(`
-                SELECT
-                  id,
-                  (payload->'workflow_run'->>'id')::bigint AS run_id,
-                  payload->'workflow_run'->>'status' AS status,
-                  payload->'workflow'->>'name' AS workflow_name,
-                  payload->'workflow_run'->>'conclusion' AS conclusion,
-                  payload->'workflow_run'->>'head_sha' AS commit_sha,
-                  payload->'workflow_run'->>'head_branch' AS branch,
-                  payload->'workflow_run'->>'created_at' AS created_at
-                FROM github_events
-                WHERE event_type = 'workflow_run'
-                  AND payload->'repository'->>'name' = '${repo_name}'
-                  and payload -> 'workflow_run' ->> 'head_branch' = '${branch_name}'
-                ORDER BY
-                  (payload->'workflow_run'->>'updated_at')::timestamptz DESC
-                LIMIT 1;
-            `)
-
-        const result = await query
-        return result.rows
-    } catch (error) {
-        throw error
-    }
-}
-
 const get_repo_build_details_by_date = async (data: any) => {
     try {
         let query;
@@ -317,6 +288,5 @@ export {
     update_repo_github_accounts_id,
     get_repo_details_dashboard,
     detailed_repos_data_dashboard,
-    get_repo_build_status,
     get_repo_build_details_by_date
 }
