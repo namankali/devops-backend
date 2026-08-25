@@ -341,6 +341,14 @@ interface DefaultClusterData {
     name: string | undefined
 }
 
+interface RegisteredRepos {
+    github_repo_id: string,
+    repo_name: string,
+    repo_fullname: string,
+    default_branch: string,
+    is_private: boolean
+}
+
 export {
     EventDetails,
     CustomRequest,
@@ -381,5 +389,6 @@ export {
     GetInfoNamespaces,
     namespaceDetails,
     DefaultClusterData,
-    UserProfile
+    UserProfile,
+    RegisteredRepos
 }

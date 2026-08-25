@@ -1,7 +1,7 @@
 import moment from "moment";
 import { insert_ai_run_query, update_ai_run } from "../models/pg/ai_runs";
 import { insert_conversation } from "../models/pg/conversations";
-import { get_messages, insert_message, update_message } from "../models/pg/messages";
+import { get_messages, get_messages_for_LLM, insert_message, update_message } from "../models/pg/messages";
 import { GetMessagesAdmin, InsertAIRuns, InsertMessage } from "../utils/interfaces";
 import { ResponseBuilder } from "../utils/responseBuilder";
 import { ApiResponse } from "../utils/types";
@@ -65,7 +65,11 @@ export class Chats {
                     method: "post",
                     url: `${process.env.PYTHON_MSRV}/ch/chat`,
                     data: {
-                        message: data.body.message
+                        message: data.body.message,
+                        history: []
+                    },
+                    headers: {
+                        "x-access-token": data.req.token
                     }
                 })
 
@@ -178,12 +182,16 @@ export class Chats {
             const ai_run_id = insert_ai_run[0]?.id
             let aiResponseText = "";
 
+            // get messsages_history
+            const history = await get_messages_for_LLM(data.req.user_id, data.params.branch)
+
             try {
                 const py_msrv_result = await axios({
                     method: "post",
                     url: `${PYTHON_MSRV}/ch/chat`,
                     data: {
-                        message: data.body.message
+                        message: data.body.message,
+                        history
                     },
                     headers: {
                         "x-access-token": data.req.token

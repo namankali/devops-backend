@@ -53,9 +53,39 @@ const get_messages = async (id: number, offset: number = 0, limit: number = 20, 
     }
 }
 
+const get_messages_for_LLM = async (user_id: string, branch: string) => {
+    if (!branch) throw Error("Branch is required")
+
+    try {
+        let query = db.raw(`
+                    SELECT
+                      c.id as conversation_id,
+                      c.title as conversation_title,
+                      m.id as message_id,
+                      m.role as role,
+                      m.content,
+                      m.branch as branch,
+                      m.status as message_status
+                    from conversations as c
+                    left join messages as m on m.conversation_id = c.id and m.branch = '${branch}'
+                    where c.user_id = ${user_id}
+                    and c.branch = '${branch}'
+                    and m.status != 'streaming'
+                    order by m.updated_at desc, m.id desc
+                    limit 16
+                `)
+
+        query = await query
+        return query.rows
+    } catch (error) {
+        throw error
+    }
+}
+
 
 export {
     insert_message,
     update_message,
-    get_messages
+    get_messages,
+    get_messages_for_LLM
 }

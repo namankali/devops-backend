@@ -5,7 +5,7 @@ import { ResponseBuilder } from "../utils/responseBuilder";
 import { ApiResponse } from "../utils/types";
 import { throwError } from "./common";
 import axios from "axios"
-import { GithubRepo, GithubTokenEncryptedData, GithubUser } from "../utils/interfaces";
+import { GithubRepo, GithubTokenEncryptedData, GithubUser, RegisteredRepos } from "../utils/interfaces";
 import { webhookQueue } from "../models/redis/queue";
 import { get_all_repos, get_repo, insert_repo } from "../models/pg/repositories";
 import { get_webhook_by_repo_id } from "../models/pg/webhooks";
@@ -247,124 +247,216 @@ export class ActionController {
         }
     }
 
-    async add_repository(data: any): Promise<ApiResponse<void>> {
+    async add_repository(data: any): Promise<ApiResponse<any>> {
         try {
             const github_owner_details = await get_github_account_details({
-                user_id: data.req.user_id
-            })
+                user_id: data.req.user_id,
+            });
 
             const token_related_data = {
                 content: github_owner_details.access_token,
                 iv: github_owner_details.iv,
-                tag: github_owner_details.tag
-            }
+                tag: github_owner_details.tag,
+            };
 
             const token = decryptGithubToken(
                 token_related_data as GithubTokenEncryptedData,
                 GITHUB_ENCRYPTION_KEY
-            )
+            );
 
-            let githubRepos = await this.fetch_all_githubrepos(token);
+            const rawRepoIds = data.query?.repo_ids;
 
-            const requested_repos = githubRepos.filter((repo: any) => {
-                if (data.body.repos.includes(repo.name)) {
-                    return repo
-                }
-            })
+            const repoIds = Array.isArray(rawRepoIds)
+                ? rawRepoIds
+                : [rawRepoIds];
 
-            console.log("requested repos -> ", requested_repos)
+            const requestedRepoIds = repoIds
+                .filter(Boolean)
+                .map((id: string | number) => Number(id))
+                .filter((id: number) => !Number.isNaN(id));
 
-            for (let repo of requested_repos) {
-                const existing = await get_repo(repo.id)
+            console.log(
+                "requested repo IDs ->>",
+                requestedRepoIds
+            );
 
-                let savedRepo = existing
+            if (requestedRepoIds.length === 0) {
+                throw new Error("No valid repository IDs were provided.");
+            }
 
-                if (!existing) {
-                    const github_accounts_db = await get_github_account_details({
-                        user_id: data.req.user_id
-                    })
+            const githubRepos = await this.fetch_all_githubrepos(token);
 
-                    const [insertRepo] = await insert_repo({
-                        github_account_id: github_accounts_db.id,
-                        github_repo_id: repo.id,
-                        name: repo.name,
-                        full_name: repo.full_name,
-                        owner_login: repo.owner.login,
-                        default_branch: repo.default_branch,
-                        private: repo.private,
-                        archived: repo.archived,
-                        language: repo.language,
-                        github_created_at: repo.created_at,
-                        github_updated_at: repo.updated_at,
-                        pushed_at: repo.pushed_at,
-                    })
+            const requestedRepos = githubRepos.filter(
+                (repo: any) =>
+                    requestedRepoIds.includes(Number(repo.id))
+            );
 
-                    savedRepo = insertRepo
-                }
+            const saved: string[] = [];
+            const failed: {
+                name: string;
+                repo_id: number;
+                error: string;
+            }[] = [];
 
-                const queueRes = await webhookQueue.add(
-                    "create-webhook",
-                    {
-                        repoId: savedRepo.id,
-                        owner: repo.owner.login,
-                        repo: repo.name,
-                        accessToken: token,
-                    },
-                    {
-                        attempts: 3,
-                        backoff: 5000,
+            for (const repo of requestedRepos) {
+                try {
+                    const existing = await get_repo(repo.id);
+
+                    let savedRepo = existing;
+
+                    if (!existing) {
+                        const github_accounts_db =
+                            await get_github_account_details({
+                                user_id: data.req.user_id,
+                            });
+
+                        const [insertRepo] = await insert_repo({
+                            github_account_id: github_accounts_db.id,
+                            github_repo_id: repo.id,
+                            name: repo.name,
+                            full_name: repo.full_name,
+                            owner_login: repo.owner.login,
+                            default_branch: repo.default_branch,
+                            private: repo.private,
+                            archived: repo.archived,
+                            language: repo.language,
+                            github_created_at: repo.created_at,
+                            github_updated_at: repo.updated_at,
+                            pushed_at: repo.pushed_at,
+                        });
+
+                        savedRepo = insertRepo;
                     }
-                )
-                console.log("queue response: ", queueRes)
+
+                    const queueRes = await webhookQueue.add(
+                        "create-webhook",
+                        {
+                            repoId: savedRepo.id,
+                            owner: repo.owner.login,
+                            repo: repo.name,
+                            accessToken: token,
+                        },
+                        {
+                            attempts: 3,
+                            backoff: 5000,
+                        }
+                    );
+
+                    saved.push(repo.name);
+
+                } catch (error: any) {
+                    console.error(
+                        `Failed to register repository ${repo.name}:`,
+                        error
+                    );
+
+                    failed.push({
+                        name: repo.name,
+                        repo_id: repo.id,
+                        error:
+                            error?.message ||
+                            "Failed to register repository",
+                    });
+                }
             }
 
+            const foundRepoIds = requestedRepos.map(
+                (repo: any) => Number(repo.id)
+            );
 
-            return new ResponseBuilder<void>().setSignature("AI-DEVOPS").success(undefined, "done")
+            const notFoundRepoIds = requestedRepoIds.filter(
+                (id) => !foundRepoIds.includes(id)
+            );
+
+            for (const repoId of notFoundRepoIds) {
+                failed.push({
+                    name: `Repository ${repoId}`,
+                    repo_id: repoId,
+                    error: "Repository was not found in the authenticated GitHub account.",
+                });
+            }
+
+            return new ResponseBuilder<any>()
+                .setSignature("AI-DEVOPS")
+                .success(
+                    {
+                        saved,
+                        failed,
+                    },
+                    "Repository registration completed"
+                );
+
         } catch (error: any) {
-            console.log(error)
-            throw throwError(error.emssage || "something went wrong")
+            console.error(
+                "Error while adding repositories:",
+                error
+            );
+
+            throw throwError(
+                error?.message ||
+                "Something went wrong while registering repositories"
+            );
         }
     }
 
-    async fetch_unregistered_repos(data: any): Promise<ApiResponse<UnregisteredRepoResponse[]>> {
+    async fetch_unregistered_repos(data: any): Promise<ApiResponse<UnregisteredRepoResponse[] | RegisteredRepos[]>> {
         try {
-            const github_owner_details = await get_github_account_details({
-                user_id: data.req.user_id
-            })
+            if (data.query.registered_status === "registered") {
+                const registered_repo = await get_all_repos(data.req.user_id)
 
-            const token_related_data = {
-                content: github_owner_details.access_token,
-                iv: github_owner_details.iv,
-                tag: github_owner_details.tag
+                return new ResponseBuilder<RegisteredRepos[]>()
+                    .setSignature("AI-DEVOPS")
+                    .success(registered_repo, "done")
+            } else {
+                const github_owner_details = await get_github_account_details({
+                    user_id: data.req.user_id
+                })
+
+                const token_related_data = {
+                    content: github_owner_details.access_token,
+                    iv: github_owner_details.iv,
+                    tag: github_owner_details.tag
+                }
+
+                const token = decryptGithubToken(
+                    token_related_data as GithubTokenEncryptedData,
+                    GITHUB_ENCRYPTION_KEY
+                )
+
+                let githubRepos = await this.fetch_all_githubrepos(token);
+
+                githubRepos = githubRepos.map((obj: any) => ({
+                    github_repo_id: obj.id,
+                    repo_name: obj.name,
+                    language: obj.language,
+                    visibility: obj.visibility,
+                    type: obj.owner.type
+                }))
+
+                let stored_repos_data = await get_all_repos(data.req.user_id)
+
+                stored_repos_data = stored_repos_data.map((obj: any) => +obj.github_repo_id)
+
+                const unregistered_repos = githubRepos.filter((obj: any) => !stored_repos_data.includes(+obj.github_repo_id)) as UnregisteredRepoResponse[]
+
+                return new ResponseBuilder<UnregisteredRepoResponse[]>()
+                    .setSignature("AI-DEVOPS")
+                    .success(unregistered_repos, "done")
             }
-
-            const token = decryptGithubToken(
-                token_related_data as GithubTokenEncryptedData,
-                GITHUB_ENCRYPTION_KEY
-            )
-
-            let githubRepos = await this.fetch_all_githubrepos(token);
-
-            githubRepos = githubRepos.map((obj: any) => ({
-                github_repo_id: obj.id,
-                repo_name: obj.name,
-                language: obj.language,
-                visibility: obj.visibility,
-                type: obj.owner.type
-            }))
-
-            let stored_repos_data = await get_all_repos(data.req.user_id)
-            
-            stored_repos_data = stored_repos_data.map((obj: any) => +obj.github_repo_id)
-
-            const unregistered_repos = githubRepos.filter((obj: any) => !stored_repos_data.includes(+obj.github_repo_id)) as UnregisteredRepoResponse[]
-
-            return new ResponseBuilder<UnregisteredRepoResponse[]>().setSignature("AI-DEVOPS").success(unregistered_repos, "done")
         } catch (error: any) {
             console.log(error)
             throw throwError(error.emssage || "something went wrong")
         }
     }
+
+    // async fetch_registered_repos(data: any): Promise<ApiResponse<void>> {
+    //     try {
+
+    //     } catch (error: any) {
+    //         console.log(error)
+    //         throw throwError(error.emssage || "something went wrong")
+    //     }
+    // }
 
     async github_alerts(data: any): Promise<ApiResponse<void>> {
         try {

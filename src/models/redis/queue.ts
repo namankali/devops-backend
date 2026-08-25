@@ -86,7 +86,7 @@ webhookQueue.process("create-webhook", async (job: Job<JobData>, done) => {
                 });
             }
 
-            done(null, true)
+            return done(null, true)
         }
         console.error("Error while queue processing: ", error)
         done(error)

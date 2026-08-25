@@ -17,6 +17,7 @@ spec:
       labels:
         app: devops-backend
     spec:
+      serviceAccountName: ai-devops-backend
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:

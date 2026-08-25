@@ -47,6 +47,7 @@ export class KubernetesServices {
                 } as GetInfoNamespaces
             })
         } catch (error) {
+            console.log("Error", error)
             throw this.getKubernetesError(error)
         }
     }

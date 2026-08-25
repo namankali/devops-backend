@@ -58,11 +58,13 @@ router.get("/v1/gat/:github_user_id", [authenticator, isAdmin], async (req: Cust
 
 // Repositories
 
-router.post("/v1/ind/repo", [authenticator, isAdmin], async (req: CustomRequest, res: Response, next: NextFunction) => {
+router.post("/v1/ind/repo/:ai", [authenticator, isAdmin], async (req: CustomRequest, res: Response, next: NextFunction) => {
     try {
         let data: Partial<ActionRequest> = {
             req: req.data,
-            body: req.body
+            body: req.body,
+            query: req.query,
+            params: req.params
         }
         const result = await action_controller.add_repository(data)
 
@@ -77,7 +79,8 @@ router.get("/v1/urr/repo", [authenticator, isAdmin], async (req: CustomRequest, 
     try {
         let data: Partial<ActionRequest> = {
             req: req.data,
-            body: req.body
+            body: req.body,
+            query: req.query
         }
         const result = await action_controller.fetch_unregistered_repos(data)
 

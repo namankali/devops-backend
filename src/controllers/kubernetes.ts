@@ -209,7 +209,14 @@ export class Kubernetes {
             } else {
                 cluster_info = await cluster_id_by_user_id(data.req.user_id)
             }
-            const kc = await this.clusterConnectionService.connect(cluster_info[0]?.cluster_id)
+
+            if (!cluster_info.length) {
+                throw new Error("No Kubernetes cluster found");
+            }
+
+            const kc = await this.clusterConnectionService.connect(
+                cluster_info[0]?.cluster_id
+            )
             const kubernetesServices = new KubernetesServices(kc)
 
             const response = await kubernetesServices.getNamespaces()
