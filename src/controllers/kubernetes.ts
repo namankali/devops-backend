@@ -238,15 +238,18 @@ export class Kubernetes {
                 rows: []
             }
 
-            let cluster_id;
+            let cluster_data;
             if (data.hasOwnProperty("namespace") && data.hasOwnProperty("provider") && data.hasOwnProperty("environment")) {
-                cluster_id = await cluster_id_by_other_details(data.req.user_id, data.provider, data.environment)
+                cluster_data = await cluster_id_by_other_details(data.req.user_id, data.provider, data.environment)
             } else {
-                cluster_id = await cluster_id_by_user_id(data.req.user_id, data.provider = "")
+                cluster_data = await cluster_id_by_user_id(data.req.user_id, data.provider = "")
 
             }
 
-            const kc = await this.clusterConnectionService.connect(cluster_id[0]?.cluster_id)
+            const kc = await this.clusterConnectionService.connect(
+                cluster_data[0]?.cluster_id,
+
+            )
             const kubernetesServices = new KubernetesServices(kc)
 
             if (data.hasOwnProperty("type") && data.type === "pods") {
@@ -344,7 +347,9 @@ export class Kubernetes {
             } else {
                 cluster_info = await cluster_id_by_user_id(data.req.user_id)
             }
-            const kc = await this.clusterConnectionService.connect(cluster_info[0]?.cluster_id)
+            const kc = await this.clusterConnectionService.connect(
+                cluster_info[0]?.cluster_id
+            )
             const kubernetesServices = new KubernetesServices(kc)
 
             let sortedData = {} as PodDetails | DeploymentDetails | ReplicaSetsDetails | DaemonSetsDetails | ServiceDetails | IngressDetails | SecretDetails
@@ -417,8 +422,10 @@ export class Kubernetes {
 
     async getEvents(data: any): Promise<ApiResponse<EventDetails[]>> {
         try {
-            const cluster_id = await cluster_id_by_user_id(data.req.user_id)
-            const kc = await this.clusterConnectionService.connect(cluster_id[0]?.cluster_id)
+            const cluster_data = await cluster_id_by_user_id(data.req.user_id)
+            const kc = await this.clusterConnectionService.connect(
+                cluster_data[0]?.cluster_id
+            )
             const kubernetesServices = new KubernetesServices(kc)
 
             const response = await kubernetesServices.getEvents(data.namespace)
@@ -449,8 +456,10 @@ export class Kubernetes {
     }
     async getPodsUsage(data: any): Promise<ApiResponse<any>> {
         try {
-            const cluster_id = await cluster_id_by_user_id(data.req.user_id)
-            const kc = await this.clusterConnectionService.connect(cluster_id[0]?.cluster_id)
+            const cluster_data = await cluster_id_by_user_id(data.req.user_id)
+            const kc = await this.clusterConnectionService.connect(
+                cluster_data[0]?.cluster_id
+            )
             const kubernetesServices = new KubernetesServices(kc)
 
             const response = await kubernetesServices.getPodsUsage(data.namespace)

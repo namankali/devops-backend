@@ -67,7 +67,7 @@ jobs:
           run: trivy image --severity HIGH,CRITICAL --ignore-unfixed devops-backend:latest
 
         - name: Build and push image
-          run: docker buildx build --platform linux/amd64 -t namankali/devops-backend:latest --push .
+          run: docker buildx build --platform linux/amd64, linux/arm64 -t namankali/devops-backend:latest --push .
 
     deploy:
         name: Deploy to kubernetes

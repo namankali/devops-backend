@@ -48,7 +48,9 @@ const fetch_credential_by_cluster_id = async (cluster_id: number) => {
         let query = db.raw(`
                 SELECT
                   cc.kubeconfig,
-                  c.id as cluster_id
+                  c.id as cluster_id,
+                  cc.authentication_type,
+                  c.api_server
                 from clusters as c
                 left join cluster_credentials as cc on cc.cluster_id = c.id 
                 where c.id = ${cluster_id}
@@ -66,6 +68,8 @@ const cluster_id_by_user_id = async (user_id: number, provider?: string, display
         let query = db.select([
             `${table}.id as cluster_id`,
             `${table}.display_name`,
+            `${table}.provider`,
+
         ]).from(table).where('user_id', user_id)
 
         if (provider) {

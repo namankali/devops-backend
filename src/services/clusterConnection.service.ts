@@ -10,17 +10,88 @@ export class ClusterConnectionService {
             throw new Error(`Cluster ${cluster_id} not found`)
         }
 
-        const kubeconfig = cluster[0]?.kubeconfig
-
-        if (!kubeconfig) {
-            throw new Error(`Kubeconfig not found for cluster ${cluster_id}`)
-        }
+        const credentials = cluster[0]
 
         const kc = new k8s.KubeConfig()
 
-        kc.loadFromString(kubeconfig)
+        switch (credentials.authentication_type) {
 
-        kc.setCurrentContext("ai-devops-backend-context")
+            case "SERVICE_ACCOUNT":
+                console.log(
+                    `Connecting to cluster ${cluster_id} using ServiceAccount`
+                )
+
+                kc.loadFromCluster()
+
+                break
+
+            case "KUBECONFIG": {
+                if (!credentials.kubeconfig) {
+                    throw new Error(
+                        `Kubeconfig not found for cluster ${cluster_id}`
+                    )
+                }
+
+                const isRunningInsideKubernetes = !!process.env.KUBERNETES_SERVICE_HOST
+
+                const runtimeClusterId = process.env.AI_DEVOPS_RUNTIME_CLUSTER_ID
+
+                const isRuntimeCluster = runtimeClusterId && Number(runtimeClusterId) === cluster_id
+
+
+                console.log("runtimeClusterId", runtimeClusterId)
+
+                if (isRuntimeCluster) {
+
+                    console.log(
+                        `Cluster ${cluster_id} is the current runtime cluster`
+                    )
+
+                    kc.loadFromCluster()
+
+                } else {
+
+                    console.log(
+                        `Cluster ${cluster_id} is an external cluster`
+                    )
+
+                    if (!credentials.kubeconfig) {
+                        throw new Error(
+                            `Kubeconfig not found for external cluster ${cluster_id}`
+                        )
+                    }
+
+                    kc.loadFromString(credentials.kubeconfig)
+                }
+
+                break
+            }
+
+            case "AWS_IAM":
+                // AWS IAM authentication
+                break
+
+            case "OIDC":
+                // OIDC authentication
+                break
+
+            default:
+                throw new Error(
+                    `Unsupported authentication type: ${credentials.authentication_type}`
+                )
+        }
+
+        console.log(
+            "Current context ->>>",
+            kc.getCurrentContext()
+        )
+
+        const currentCluster = kc.getCurrentCluster()
+
+        console.log(
+            "Kubernetes API server ->>>",
+            currentCluster?.server
+        )
 
         return kc
     }
