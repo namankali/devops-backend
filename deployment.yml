@@ -138,6 +138,11 @@ spec:
                 secretKeyRef:
                   name: devops-secrets
                   key: GITHUB_WEBHOOK_SECRET
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: devops-secrets
+                  key: REDIS_PASSWORD
           livenessProbe:
             httpGet:
               path: /api/index/health
