@@ -102,6 +102,22 @@ const GITHUB_ENCRYPTION_ALGO = (() => {
     if (!algo) throw new Error("Missing GITHUB_ENCRYPTION_ALGO")
     return algo
 })()
+
+const REDIS_HOST = (() => {
+    const algo = process.env.REDIS_HOST
+    if (!algo) throw new Error("Missing REDIS HOST")
+    return algo
+})()
+const REDIS_PORT = (() => {
+    const algo = process.env.REDIS_PORT
+    if (!algo) throw new Error("Missing REDIS_PORT")
+    return algo
+})()
+const REDIS_PASSWORD = (() => {
+    const algo = process.env.REDIS_PASSWORD
+    if (!algo) throw new Error("Missing REDIS PASSWORD")
+    return algo
+})()
 const GITHUB_ENCRYPTION_KEY = (() => {
     if (!process.env.GITHUB_ENCRYPTION_KEY) throw error("Key not found!!!")
     const key = Buffer.from(process.env.GITHUB_ENCRYPTION_KEY, "base64")
@@ -125,5 +141,8 @@ export {
     GITHUB_ENCRYPTION_KEY_LENGTH,
     GITHUB_ENCRYPTION_ALGO,
     GITHUB_ENCRYPTION_KEY,
-    PYTHON_MSRV
+    PYTHON_MSRV,
+    REDIS_HOST,
+    REDIS_PORT,
+    REDIS_PASSWORD
 }

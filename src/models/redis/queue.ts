@@ -6,7 +6,7 @@ import { get_repo, insert_repo, update_repo_github_accounts_id } from "../pg/rep
 import { insert_github_event } from "../pg/github_events"
 import { get_github_account_details, get_user_account_details, update_github_access_token } from "../pg/github"
 import { decryptGithubToken } from "../../helper/secret_functions"
-import { GITHUB_ENCRYPTION_KEY, PYTHON_MSRV } from "../../helper/configHelper"
+import { GITHUB_ENCRYPTION_KEY, PYTHON_MSRV, REDIS_HOST, REDIS_PASSWORD, REDIS_PORT } from "../../helper/configHelper"
 
 interface JobDataOrgWebhookCreation {
     github_account_id: number,
@@ -16,14 +16,9 @@ interface JobDataOrgWebhookCreation {
 
 const webhookQueue = new Bull("webhook-queue", {
     redis: {
-        // host: "redis-19514.c11.us-east-1-2.ec2.cloud.redislabs.com",
-        // port: 19514,
-        // username: "naman",
-        // password: "Naman@1234",
-        // username: process.env.REDIS_USER,
-        host: "127.0.0.1",
-        port: 6300,
-        password: "demopasscheck@123",
+        host: REDIS_HOST,
+        port: Number(REDIS_PORT),
+        password: REDIS_PASSWORD,
     },
     defaultJobOptions: {
         removeOnComplete: true,
