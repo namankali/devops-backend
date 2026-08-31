@@ -65,6 +65,7 @@ const profile = async (user_id: number) => {
             `${table}.id`,
             `${table}.full_name`,
             `${table}.username`,
+            `${table}.role`,
         ]).from(table).where("id", user_id)
 
         return await query

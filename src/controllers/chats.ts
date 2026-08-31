@@ -2,7 +2,7 @@ import moment from "moment";
 import { insert_ai_run_query, update_ai_run } from "../models/pg/ai_runs";
 import { insert_conversation } from "../models/pg/conversations";
 import { get_messages, get_messages_for_LLM, insert_message, update_message } from "../models/pg/messages";
-import { GetMessagesAdmin, InsertAIRuns, InsertMessage } from "../utils/interfaces";
+import { AIResponse, GetMessagesAdmin, InsertAIRuns, InsertMessage } from "../utils/interfaces";
 import { ResponseBuilder } from "../utils/responseBuilder";
 import { ApiResponse } from "../utils/types";
 import { throwError } from "./common";
@@ -175,12 +175,12 @@ export class Chats {
                 user_id: data.req.user_id,
                 conversation_id: data.body.conversation_id,
                 status: "running",
-                model: "qwen2.5:7b",
-                started_at: moment().format()
+                started_at: moment().format(),
+                input: data.body.message
             } as InsertAIRuns)
 
             const ai_run_id = insert_ai_run[0]?.id
-            let aiResponseText = "";
+            let aiResponse = {} as AIResponse
 
             // get messsages_history
             const history = await get_messages_for_LLM(data.req.user_id, data.params.branch)
@@ -191,14 +191,16 @@ export class Chats {
                     url: `${PYTHON_MSRV}/ch/chat`,
                     data: {
                         message: data.body.message,
-                        history
+                        history,
+                        ai_run_id
                     },
                     headers: {
                         "x-access-token": data.req.token
                     }
                 })
 
-                aiResponseText = py_msrv_result.data?.response || "";
+                aiResponse = py_msrv_result.data || {};
+                console.log("python resposne", aiResponse)
             } catch (error) {
                 console.log("Error: ", error)
                 await update_ai_run(ai_run_id, {
@@ -215,20 +217,28 @@ export class Chats {
             }
 
             await update_message(assistant_message_id, {
-                content: aiResponseText,
+                content: aiResponse?.response ?? aiResponse?.error,
                 status: "completed",
-                updated_at: moment().format()
+                updated_at: moment().add(20, "seconds").format()
             });
 
-            await update_ai_run(ai_run_id, {
+            await update_ai_run(aiResponse?.ai_run_id, {
                 status: "completed",
+                latency_ms: aiResponse?.latency_ms,
                 completed_at: moment().toISOString(),
+                total_tokens: aiResponse?.total_tokens,
+                prompt_tokens: aiResponse?.prompt_tokens,
+                completion_tokens: aiResponse?.completion_tokens,
+                "model": aiResponse.model,
+                "provider": aiResponse?.provider,
+                ...(aiResponse.response ? { output: aiResponse?.response } : { error: aiResponse?.error })
+
             });
 
             return new ResponseBuilder<Record<string, string>>()
                 .setSignature("AI-DEVOPS")
                 .success(
-                    { message: aiResponseText },
+                    { message: aiResponse?.response },
                     "messages"
                 );
         } catch (error: any) {

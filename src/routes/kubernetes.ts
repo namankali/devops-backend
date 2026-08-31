@@ -28,6 +28,23 @@ router.get("/v1/clusters",
         }
     })
 
+router.get("/v1/dashboard/kube",
+    [authenticator, isAdmin],
+    async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            let data: Partial<ActionRequest> = {
+                body: req.body,
+                req: req.data,
+                query: { ...req.query }
+            }
+
+            const result = await kubernetesController.dashboard_overview(data)
+            res.status(result.status).send(result)
+        } catch (error) {
+            next(error)
+        }
+    })
+
 router.post(
     "/v1/register/cluster", [authenticator, isAdmin], upload.single("kubeconfig"), async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
         try {
@@ -122,6 +139,7 @@ router.get("/v1/events/:namespace", [authenticator, isAdmin], async (req: Custom
         let data: Partial<ActionRequest> = {
             req: req.data,
             ...req.params,
+            query: req.query
         }
         const result = await kubernetesController.getEvents(data)
 

@@ -6,7 +6,7 @@ import { get_repo, insert_repo, update_repo_github_accounts_id } from "../pg/rep
 import { insert_github_event } from "../pg/github_events"
 import { get_github_account_details, get_user_account_details, update_github_access_token } from "../pg/github"
 import { decryptGithubToken } from "../../helper/secret_functions"
-import { GITHUB_ENCRYPTION_KEY, PYTHON_MSRV, REDIS_HOST, REDIS_PASSWORD, REDIS_PORT } from "../../helper/configHelper"
+import { GITHUB_ENCRYPTION_KEY, PYTHON_MSRV, REDIS_HOST, REDIS_PASSWORD, REDIS_PORT, WEBHOOK_HOST } from "../../helper/configHelper"
 
 interface JobDataOrgWebhookCreation {
     github_account_id: number,
@@ -71,7 +71,7 @@ webhookQueue.process("create-webhook", async (job: Job<JobData>, done) => {
                 { owner, repo }
             )
 
-            const existing = hooks.data.find((h: any) => h.config?.url === "https://cuprous-caitlyn-pulsatile.ngrok-free.dev/api/webhook/wb")
+            const existing = hooks.data.find((h: any) => h.config?.url === `${WEBHOOK_HOST}/api/webhook/wb`)
 
             if (existing) {
                 await insert_webhook({
@@ -237,8 +237,6 @@ webhookQueue.process("process-failed-build", async (job, done) => {
             iv: account.iv,
             tag: account.tag,
         }, GITHUB_ENCRYPTION_KEY);
-
-        console.log("token gthub ->>> ", token)
 
         const octokit = new Octokit({ auth: token });
 

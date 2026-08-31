@@ -50,7 +50,8 @@ const fetch_credential_by_cluster_id = async (cluster_id: number) => {
                   cc.kubeconfig,
                   c.id as cluster_id,
                   cc.authentication_type,
-                  c.api_server
+                  c.api_server,
+                  c.display_name
                 from clusters as c
                 left join cluster_credentials as cc on cc.cluster_id = c.id 
                 where c.id = ${cluster_id}
@@ -65,6 +66,7 @@ const fetch_credential_by_cluster_id = async (cluster_id: number) => {
 
 const cluster_id_by_user_id = async (user_id: number, provider?: string, display_name?: string, env?: string) => {
     try {
+        console.log("display_name", display_name)
         let query = db.select([
             `${table}.id as cluster_id`,
             `${table}.display_name`,
@@ -172,6 +174,20 @@ const cluster_id_by_other_details = async (user_id: number, provider: string, en
         throw error
     }
 }
+const fetch_registered_clusters = async (user_id: number) => {
+    try {
+        const query = db.select([
+            `${table}.id`,
+            `${table}.display_name`,
+        ])
+            .from(table)
+            .where(`${table}.user_id`, user_id)
+
+        return await query
+    } catch (error) {
+        throw error
+    }
+}
 
 export {
     fetch_credential,
@@ -181,5 +197,6 @@ export {
     fetch_provider_environment,
     fetch_environments,
     default_cluster_data,
-    cluster_id_by_other_details
+    cluster_id_by_other_details,
+    fetch_registered_clusters
 }

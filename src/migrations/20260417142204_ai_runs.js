@@ -26,11 +26,13 @@ exports.up = async function (knex) {
         table.enu("status", ["pending", "running", "completed", "failed"]).defaultTo("pending")
 
         table.string("input").defaultTo("");
-        table.string("output").defaultTo("");
+        table.text("output").defaultTo("");
         table.string("error").defaultTo("");
 
-        table.integer("tokens_used")
-        table.integer("latency_ms")
+        table.integer("prompt_tokens");
+        table.integer("completion_tokens");
+        table.integer("total_tokens");
+        table.integer("latency_ms");
 
 
         table.timestamp("started_at").defaultTo(knex.fn.now());

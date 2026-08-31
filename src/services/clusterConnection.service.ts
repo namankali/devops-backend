@@ -81,18 +81,6 @@ export class ClusterConnectionService {
                 )
         }
 
-        console.log(
-            "Current context ->>>",
-            kc.getCurrentContext()
-        )
-
-        const currentCluster = kc.getCurrentCluster()
-
-        console.log(
-            "Kubernetes API server ->>>",
-            currentCluster?.server
-        )
-
         return kc
     }
 }

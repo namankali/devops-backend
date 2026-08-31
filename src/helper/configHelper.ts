@@ -118,6 +118,12 @@ const REDIS_PASSWORD = (() => {
     if (!algo) throw new Error("Missing REDIS PASSWORD")
     return algo
 })()
+
+const WEBHOOK_HOST = (() => {
+    const algo = process.env.WEBHOOK_HOST
+    if (!algo) throw new Error("Missing WEBHOOK HOST")
+    return algo
+})()
 const GITHUB_ENCRYPTION_KEY = (() => {
     if (!process.env.GITHUB_ENCRYPTION_KEY) throw error("Key not found!!!")
     const key = Buffer.from(process.env.GITHUB_ENCRYPTION_KEY, "base64")
@@ -144,5 +150,6 @@ export {
     PYTHON_MSRV,
     REDIS_HOST,
     REDIS_PORT,
-    REDIS_PASSWORD
+    REDIS_PASSWORD,
+    WEBHOOK_HOST
 }

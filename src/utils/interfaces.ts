@@ -132,7 +132,8 @@ interface InsertAIRuns {
     user_id: number,
     assistant_message_id: number,
     status: string,
-    model: string,
+    input: string,
+    model?: string,
     started_at: string
 }
 
@@ -349,6 +350,61 @@ interface RegisteredRepos {
     is_private: boolean
 }
 
+interface AIResponse {
+    success: boolean,
+    response: string,
+    latency_ms: number,
+    ai_run_id: number,
+    total_tokens: number,
+    model: string,
+    prompt_tokens: number,
+    completion_tokens: number,
+    provider: string,
+    error?: string
+}
+
+interface AIHealthResult {
+    score: number;
+
+    provider: {
+        name: string;
+        score: number;
+        available: boolean;
+        details: any;
+    };
+
+    model: {
+        name: string;
+        score: number;
+        available: boolean;
+        details: any;
+    };
+
+    inference: {
+        score: number;
+        success_rate: number | null;
+        total_runs: number;
+        successful_runs: number;
+        failed_runs: number;
+    };
+
+    latency: {
+        score: number;
+        average_ms: number | null;
+        p95_ms: number | null;
+        sample_size: number;
+    };
+
+    tools: {
+        score: number;
+        success_rate: number | null;
+        total_calls: number;
+        successful_calls: number;
+        failed_calls: number;
+    };
+}
+
+
 export {
     EventDetails,
     CustomRequest,
@@ -390,5 +446,7 @@ export {
     namespaceDetails,
     DefaultClusterData,
     UserProfile,
-    RegisteredRepos
+    RegisteredRepos,
+    AIResponse,
+    AIHealthResult
 }

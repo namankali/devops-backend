@@ -9,7 +9,7 @@ import { KubernetesServices } from "../services/kubernetes.service";
 import { DaemonSetsDetails, DefaultClusterData, DeploymentDetails, EventDetails, GetInfoDaemonSets, GetInfoKubernetesAPI, GetInfoKubernetesDeployments, GetInfoKubernetesPods, GetInfoNamespaces, GetInfoReplicaSets, GetInfoServices, IngressDetails, namespaceDetails, PodDetails, ReplicaSetsDetails, SecretDetails, ServiceDetails } from "../utils/interfaces";
 
 // Models
-import { cluster_id_by_other_details, cluster_id_by_user_id, default_cluster_data, fetch_credential, fetch_environments, fetch_provider_environment, insert_cluster_data } from "../models/pg/clusters"
+import { cluster_id_by_other_details, cluster_id_by_user_id, default_cluster_data, fetch_credential, fetch_credential_by_cluster_id, fetch_environments, fetch_provider_environment, fetch_registered_clusters, insert_cluster_data } from "../models/pg/clusters"
 
 // helpers
 import { GeneralHelper } from "../helper/general_heplers";
@@ -422,7 +422,17 @@ export class Kubernetes {
 
     async getEvents(data: any): Promise<ApiResponse<EventDetails[]>> {
         try {
-            const cluster_data = await cluster_id_by_user_id(data.req.user_id)
+            console.log("get incoming controller data", data)
+            let cluster_data = []
+            if (data.query.provider && data.query.env) {
+                cluster_data = await cluster_id_by_other_details(
+                    data.req.user_id,
+                    data.query.provider,
+                    data.query.env
+                )
+            } else {
+                cluster_data = await cluster_id_by_user_id(data.req.user_id)
+            }
             const kc = await this.clusterConnectionService.connect(
                 cluster_data[0]?.cluster_id
             )
@@ -508,6 +518,151 @@ export class Kubernetes {
             return new ResponseBuilder<ProviderEnvironmentProps[]>()
                 .setSignature("AI-DEVOPS")
                 .success(apiResponse, "Signed up successfully", 200);
+        } catch (error: any) {
+            console.log(error.message)
+            throw throwError(error.message ?? "Something went wrong");
+        }
+    }
+
+    async dashboard_overview(data: any) {
+        try {
+            let final_data = {
+                "clusterName": '',
+                "clusterId": "",
+                clusterStatus: "",
+                "registeredClusters": [],
+
+                nodeReadiness: {
+                    percentage: 0,
+                    ready: 0,
+                    total: 0,
+                    label: "0 / 0 ready",
+                },
+
+                workloadStability: {
+                    percentage: 0,
+                    running: 0,
+                    unhealthy: 0,
+                    restarts: 0,
+                    label: "No failed workloads",
+                },
+
+                deployments: {
+                    total: 0,
+                    label: "Operational",
+                },
+
+                attention: {
+                    count: 0,
+                    label: "No critical issues",
+                },
+
+                signals: [
+                    {
+                        name: "Nodes",
+                        status: "Healthy",
+                        value: "0 / 0 Ready",
+                    },
+                    {
+                        name: "Workloads",
+                        status: "Stable",
+                        value: "0 Running",
+                    },
+                    {
+                        name: "Cluster Availability",
+                        status: "Healthy",
+                        value: "",
+                    },
+                ],
+            }
+            let cluster_id
+
+            if (data.query.hasOwnProperty("clusterName")) {
+                const db_result = await cluster_id_by_user_id(data.req.user_id, undefined, data.query.clusterName)
+                cluster_id = db_result[0].cluster_id
+                final_data.clusterName = db_result[0].display_name
+            } else if (data.cluster_id) {
+                cluster_id = data.cluster_id
+                const db_result = await fetch_credential_by_cluster_id(cluster_id)
+                final_data.clusterName = db_result[0].display_name
+            } else {
+                const db_result = await cluster_id_by_user_id(data.req.user_id)
+                cluster_id = db_result[0].cluster_id
+                final_data.clusterName = db_result[0].display_name
+            }
+
+            const clusters_data = await fetch_registered_clusters(data.req.user_id)
+            final_data.registeredClusters = clusters_data
+            final_data.clusterId = cluster_id
+
+            const kc = await this.clusterConnectionService.connect(
+                cluster_id
+            )
+
+            const kubernetesServices = new KubernetesServices(kc)
+
+            const nodesData = await kubernetesServices.getNodes()
+            const readyNodes = nodesData.filter((obj) => {
+                if (obj.status === "Ready") return obj.status
+            }).length
+            final_data.clusterStatus = nodesData.length > 0 && nodesData.length === readyNodes ? "Healthy" : "Degraded"
+            final_data.nodeReadiness = {
+                percentage: nodesData.length === 0 ? 0 : Math.round((readyNodes / nodesData.length) * 100),
+                ready: readyNodes,
+                total: nodesData.length,
+                label: `${readyNodes} / ${nodesData.length} ready`
+            }
+
+            const podsData = await kubernetesServices.getPods("all")
+            const running_pods = podsData.filter(pod => pod.status === "Running")
+            const unhealthyPods = podsData.filter(pod => pod.status !== "Running")
+            const total_restarts = podsData.reduce((total, pod) => total + (pod.restarts), 0)
+            const workload_percentage = podsData.length === 0 ? 0 : Math.round((running_pods.length / podsData.length) * 100)
+            final_data.workloadStability = {
+                percentage: workload_percentage,
+                running: running_pods.length,
+                unhealthy: unhealthyPods.length,
+                restarts: total_restarts,
+                label: unhealthyPods.length === 0 ? "No failed workloads" : `${unhealthyPods.length} unhealthy workloads`
+            }
+
+            const deploymentsData = await kubernetesServices.getDeployments("all")
+            final_data.deployments = {
+                total: deploymentsData.length,
+                label: "Operational"
+            }
+
+            const events_data = await kubernetesServices.getEvents("all")
+            const warning_events = events_data.filter((event) => event.type === "Warning")
+            const attention_count = warning_events.length
+            const attention_label = attention_count === 0 ? "No critical issues" : attention_count === 1 ? `${attention_count} issue requires attention` : `${attention_count} issues require attention`
+            final_data.attention = {
+                count: attention_count,
+                label: attention_label
+            }
+
+            final_data.signals = [
+                {
+                    name: "nodes",
+                    status: "Healthy",
+                    value: `${readyNodes} / ${nodesData.length} ready`
+                },
+                {
+                    name: "Workloads",
+                    status: "Stable",
+                    value: `${running_pods.length} Running`,
+                },
+                {
+                    name: "Cluster Availability",
+                    status: "Healthy",
+                    value: nodesData.length === 0 ? "0%" : `${Math.round((readyNodes / nodesData.length) * 100)}%`,
+                }
+            ]
+
+            return new ResponseBuilder<any>()
+                .setSignature("AI-DEVOPS")
+                .success(final_data, "Signed up successfully", 200);
+
         } catch (error: any) {
             console.log(error.message)
             throw throwError(error.message ?? "Something went wrong");
