@@ -149,19 +149,41 @@ export class KubernetesServices {
     }
 
     async getServices(namespace: string = "default"): Promise<GetInfoServices[]> {
+
         const response = namespace === "all"
             ? await this.coreApi.listServiceForAllNamespaces()
             : await this.coreApi.listNamespacedService(namespace)
 
-        return response.body.items.map((obj) => {
-            return {
-                name: obj.metadata?.name,
-                namespace: obj.metadata?.namespace,
-                created: obj.metadata?.creationTimestamp,
-                // cluster
-            }
+        return Promise.all(
+            response.body.items.map(async (obj) => {
 
-        })
+                const name = obj.metadata?.name
+                const ns = obj.metadata?.namespace
+
+                let active = false
+
+                if (name && ns) {
+                    try {
+                        const endpoints =
+                            await this.coreApi.readNamespacedEndpoints(name, ns)
+
+                        active = endpoints.body.subsets?.some(
+                            subset => (subset.addresses?.length ?? 0) > 0
+                        ) ?? false
+
+                    } catch (error) {
+                        active = false
+                    }
+                }
+
+                return {
+                    name,
+                    namespace: ns,
+                    created: obj.metadata?.creationTimestamp,
+                    active
+                }
+            })
+        )
     }
     async getIngress(namespace: string = "default"): Promise<GetInfoIngress[]> {
         const response = namespace === "all"

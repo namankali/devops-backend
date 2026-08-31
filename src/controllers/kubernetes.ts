@@ -151,7 +151,7 @@ export class Kubernetes {
                 final_result.push({
                     title: "deployments",
                     value: value,
-                    sub_value: 0
+                    sub_value: value
                 })
             }
 
@@ -168,21 +168,23 @@ export class Kubernetes {
 
             if (data.hasOwnProperty("services") && data.services === "true") {
                 const result = await kubernetesServices.getServices(data.namespace)
-
+                const { value, sub_value } = this.servicesData(result)
+                
                 final_result.push({
                     title: "services",
-                    value: 0,
-                    sub_value: 0
+                    value: value,
+                    sub_value: sub_value
                 })
             }
 
             if (data.hasOwnProperty("clusters") && data.clusters === "true") {
-                // const result = await kubernetesServices.getServices(data.namespace)
+                const result = await kubernetesServices.getNodes()
+                const { value, sub_value } = this.nodeData(result)
 
                 final_result.push({
-                    title: "services",
-                    value: 0,
-                    sub_value: 0
+                    title: "clusters",
+                    value: value,
+                    sub_value: sub_value
                 })
             }
 
@@ -714,6 +716,7 @@ export class Kubernetes {
 
         return structuredData
     }
+
     private sortServicesDetails(data: Record<string, any>) {
         let structuredData = {
             name: data.metadata?.name,
@@ -818,6 +821,16 @@ export class Kubernetes {
 
         sub_value = data.reduce((count: number, obj: any) => {
             return obj.status === "Ready" ? count + 1 : count
+        }, 0)
+
+        return { value, sub_value }
+    }
+    private servicesData(data: any) {
+        let value = data.length
+        let sub_value = 0
+
+        sub_value = data.reduce((count: number, obj: any) => {
+            return obj.active ? count + 1 : count
         }, 0)
 
         return { value, sub_value }
