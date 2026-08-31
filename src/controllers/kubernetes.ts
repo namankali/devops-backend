@@ -169,7 +169,7 @@ export class Kubernetes {
             if (data.hasOwnProperty("services") && data.services === "true") {
                 const result = await kubernetesServices.getServices(data.namespace)
                 const { value, sub_value } = this.servicesData(result)
-                
+
                 final_result.push({
                     title: "services",
                     value: value,
@@ -343,7 +343,7 @@ export class Kubernetes {
     async getResourceSpecificDetails(data: any): Promise<ApiResponse<PodDetails | DeploymentDetails | ReplicaSetsDetails | DaemonSetsDetails | ServiceDetails | IngressDetails | SecretDetails>> {
         try {
             let cluster_info
-            console.log("env provider", data)
+
             if (data.hasOwnProperty("provider") && data.provider && data.hasOwnProperty("environment") && data.environment) {
                 cluster_info = await cluster_id_by_other_details(data.req.user_id, data.provider, data.environment)
             } else {
