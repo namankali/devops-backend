@@ -405,7 +405,31 @@ interface AIHealthResult {
 }
 
 
+interface DependencyTopologyService {
+    service_id: string;
+    name: string;
+    namespace: string;
+    selector: Record<string, string>;
+}
+
+interface DependencyTopologyEdge {
+    dependent_service_id: string;
+    dependency_service_id: string;
+}
+
+interface DependencyTopologyData {
+    schema_version: 1;
+    observed_at: string;
+    services: DependencyTopologyService[];
+    dependencies: DependencyTopologyEdge[];
+}
+
+
+
 export {
+    DependencyTopologyService,
+    DependencyTopologyEdge,
+    DependencyTopologyData,
     EventDetails,
     CustomRequest,
     AccessTokenData,
