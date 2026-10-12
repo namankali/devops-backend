@@ -291,7 +291,7 @@ export class ActionController {
                     requestedRepoIds.includes(Number(repo.id))
             );
 
-            const saved: string[] = [];
+            const saved: Record<string, any>[] = [];
             const failed: {
                 name: string;
                 repo_id: number;
@@ -342,7 +342,10 @@ export class ActionController {
                         }
                     );
 
-                    saved.push(repo.name);
+                    saved.push({
+                        "repo_name": repo.name,
+                        "repo_id": repo.id
+                    });
 
                 } catch (error: any) {
                     console.error(
