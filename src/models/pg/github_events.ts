@@ -13,20 +13,17 @@ interface InsertEvent {
 }
 
 const insert_github_event = async (data: InsertEvent) => {
-    try {
-        const query = db(table).insert({
+    return db(table)
+        .insert({
             repository_id: data.repo_id,
             event_type: data.event,
             payload: data.payload,
             delivery_id: data.delivery_id,
             source_type: data.source_type
         })
-
-        return await query
-    } catch (error) {
-        throw error
-    }
-}
+        .onConflict("delivery_id")
+        .ignore();
+};
 
 const check_delivery = async (delivery_id: string, source: string) => {
     try {
@@ -225,7 +222,8 @@ const get_repo_build_status = async (repo_name: string | string[], branch_name: 
                           payload -> 'workflow_run' ->> 'head_sha' AS commit_sha,
                           payload -> 'workflow_run' ->> 'display_title' AS display_title,
                           payload -> 'workflow_run' ->> 'created_at' AS created_at,
-                          payload -> 'workflow_run' ->> 'updated_at' AS updated_at
+                          payload -> 'workflow_run' ->> 'updated_at' AS updated_at,
+                          payload -> 'workflow_run' ->> 'conclusion' AS status
                         From github_events
                         ${__query_}
                         ${branch_filter}
@@ -247,7 +245,8 @@ const get_repo_build_status = async (repo_name: string | string[], branch_name: 
                                 'commit_sha', commit_sha,
                                 'display_title', display_title,
                                 'created_at', created_at,
-                                'updated_at', updated_at
+                                'updated_at', updated_at,
+                                'status', status
                         ) order by cte.updated_at desc
                       ) as builds
                     from cte
@@ -282,7 +281,57 @@ const get_repo_build_status = async (repo_name: string | string[], branch_name: 
 }
 
 
+const build_success_rate_query = async () => {
+    try {
+        const query = db.raw(`
+            WITH latest_runs AS (
+                SELECT DISTINCT ON (payload -> 'workflow_run' ->> 'id')
+                    (payload -> 'workflow_run' ->> 'id')::BIGINT AS run_id,
+                    payload -> 'workflow_run' ->> 'conclusion' AS conclusion
+                FROM github_events
+                WHERE event_type = 'workflow_run'
+                ORDER BY
+                    payload -> 'workflow_run' ->> 'id',
+                    (payload -> 'workflow_run' ->> 'updated_at')::TIMESTAMPTZ DESC
+            )
+            SELECT
+                COUNT(*) FILTER (
+                    WHERE conclusion = 'success'
+                ) AS successful_runs,
 
+                COUNT(*) FILTER (
+                    WHERE conclusion = 'failure'
+                ) AS failed_runs,
+
+                COUNT(*) FILTER (
+                    WHERE conclusion IN ('success', 'failure')
+                ) AS total_runs,
+
+                ROUND(
+                    (
+                        COUNT(*) FILTER (
+                            WHERE conclusion = 'success'
+                        ) * 100.0
+                        /
+                        NULLIF(
+                            COUNT(*) FILTER (
+                                WHERE conclusion IN ('success', 'failure')
+                            ),
+                            0
+                        )
+                    ),
+                    1
+                ) AS success_rate
+            FROM latest_runs;
+        `);
+
+        const result = await query;
+
+        return result.rows[0];
+    } catch (error) {
+        throw error;
+    }
+};
 
 
 export {
@@ -293,5 +342,6 @@ export {
     branch_build_info_query,
     build_duration_by_date,
     data_for_ai_workflow,
-    get_repo_build_status
+    get_repo_build_status,
+    build_success_rate_query
 }
