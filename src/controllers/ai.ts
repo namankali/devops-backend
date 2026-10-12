@@ -18,8 +18,8 @@ export class AIController {
                 return new ResponseBuilder<GETAIWorflowRepos[]>()
                     .setSignature("AI-DEVOPS")
                     .success(repos_data, "Data for LLM")
-            } else if (data.query.hasOwnProperty("repo_name") && data.query.repo_name.length > 0 && !data.query.hasOwnProperty("start_date")) {
-
+            } else if (data.query.hasOwnProperty("repo_name") && data.query.repo_name.length > 0 && (!data.query.hasOwnProperty("start_date") || !data.query.start_date)) {
+                console.log("bull's eye", data.query.count, !!data.query.count)
                 const repo_details = await get_repo_build_status(
                     data.query?.repo_name,
                     data.query.branch_name || "",
