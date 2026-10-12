@@ -10,7 +10,8 @@ import { AIHealthResult, DashboardReposDetails, GithubTokenEncryptedData } from 
 import { KubernetesServices } from "../services/kubernetes.service";
 import { cluster_id_by_user_id } from "../models/pg/clusters";
 import { ClusterConnectionService } from "../services/clusterConnection.service";
-import { inference_stats_query, latency_stats_query, tool_stats_query } from "../models/pg/ai_runs";
+import { agent_uauage, inference_stats_query, latency_stats_query, tool_stats_query } from "../models/pg/ai_runs";
+import { build_success_rate_query } from "../models/pg/github_events";
 
 type RepoDetails = {
     github_repo_id: string;
@@ -116,6 +117,36 @@ export class RepositoriesController {
                 error?.response?.data?.message ||
                 error.message ||
                 "GitHub integration failed"
+            )
+        }
+    }
+    async get_agent_usage(data: any): Promise<ApiResponse<DashboardReposDetails[]>> {
+        try {
+            const db_result = await agent_uauage(data.req.user_id)
+
+            return new ResponseBuilder<any>().setSignature("AI-DEVOPS").success(db_result, "done")
+        } catch (error: any) {
+            console.error("GitHub error:", error?.response?.data || error)
+
+            throw throwError(
+                error?.response?.data?.message ||
+                error.message ||
+                "agent usuage data fetching failed"
+            )
+        }
+    }
+    async get_build_success_rate(data: any): Promise<ApiResponse<DashboardReposDetails[]>> {
+        try {
+            const db_result = await build_success_rate_query()
+
+            return new ResponseBuilder<any>().setSignature("AI-DEVOPS").success(db_result, "done")
+        } catch (error: any) {
+            console.error("GitHub error:", error?.response?.data || error)
+
+            throw throwError(
+                error?.response?.data?.message ||
+                error.message ||
+                "agent usuage data fetching failed"
             )
         }
     }
@@ -632,7 +663,7 @@ export class RepositoriesController {
 
     private async getToolStats() {
         const result = await tool_stats_query(this.WINDOW_HOURS)
-        
+
         const totalCalls = Number(result[0]?.total_calls || 0);
         const successfulCalls = Number(result[0]?.successful_calls || 0);
         const failedCalls = Number(result[0]?.failed_calls || 0);
