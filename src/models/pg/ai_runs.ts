@@ -77,10 +77,31 @@ const latency_stats_query = async (window_hours: number) => {
     }
 }
 
+const agent_uauage = async (user_id: number) => {
+    try {
+        let query = db.raw(`
+        SELECT
+            TO_CHAR(DATE(started_at), 'YYYY-MM-DD') AS date,
+            COUNT(*) AS usage
+        FROM ai_runs
+        WHERE started_at >= NOW() - INTERVAL '7 DAY'
+        and user_id = ${user_id}
+        GROUP BY DATE(started_at)
+        ORDER BY DATE(started_at);
+        `)
+
+        let result = await query
+        return result.rows
+    } catch (error) {
+        throw error
+    }
+}
+
 export {
     insert_ai_run_query,
     update_ai_run,
     inference_stats_query,
     latency_stats_query,
-    tool_stats_query
+    tool_stats_query,
+    agent_uauage
 }
