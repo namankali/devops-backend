@@ -157,6 +157,8 @@ kind: Service
 metadata:
   name: devops-backend-service
   namespace: devops
+  annotations:
+    event-engine.ai-devops.example.com/depends-on: "devops-py-service,redis-master"
 spec:
   selector:
     app: devops-backend
