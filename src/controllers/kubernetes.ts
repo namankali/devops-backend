@@ -203,6 +203,35 @@ export class Kubernetes {
         }
     }
 
+
+    async getDependencyTopology(data: any): Promise<ApiResponse<void>> {
+        try {
+            let cluster_info
+            if (data.hasOwnProperty("provider") && data.provider && data.hasOwnProperty("environment") && data.environment) {
+                cluster_info = await cluster_id_by_other_details(data.req.user_id, data.provider, data.environment)
+            } else {
+                cluster_info = await cluster_id_by_user_id(data.req.user_id)
+            }
+
+            if (!cluster_info.length) {
+                throw new Error("No Kubernetes cluster found");
+            }
+
+            const kc = await this.clusterConnectionService.connect(
+                cluster_info[0]?.cluster_id
+            )
+            const kubernetesServices = new KubernetesServices(kc)
+            const topology_data = await kubernetesServices.getDependencyTopology()
+
+            return new ResponseBuilder<any>()
+                .setSignature("AI-DEVOPS")
+                .success(topology_data, "Signed up successfully", 200);
+        } catch (error: any) {
+            console.log(error.message)
+            throw throwError(error.message ?? "Something went wrong");
+        }
+    }
+
     async getNamespaces(data: any): Promise<ApiResponse<NamespaceResponse[]>> {
         try {
             let cluster_info
@@ -513,6 +542,7 @@ export class Kubernetes {
             throw throwError(error.message ?? "Something went wrong");
         }
     }
+
     async getEnvironments(data: any): Promise<ApiResponse<ProviderEnvironmentProps[]>> {
         try {
             const apiResponse = await fetch_environments(data.req.user_id)
