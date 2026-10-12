@@ -1,6 +1,6 @@
 import * as k8s from "@kubernetes/client-node"
 import moment from "moment";
-import { EventDetails, GetInfoConfigMaps, GetInfoDaemonSets, GetInfoIngress, GetInfoKubernetesDeployments, GetInfoKubernetesPods, GetInfoNamespaces, GetInfoReplicaSets, GetInfoServices } from "../utils/interfaces";
+import { EventDetails, GetInfoConfigMaps, GetInfoDaemonSets, GetInfoIngress, GetInfoKubernetesDeployments, GetInfoKubernetesPods, GetInfoNamespaces, GetInfoReplicaSets, GetInfoServices, DependencyTopologyService, DependencyTopologyEdge, DependencyTopologyData } from "../utils/interfaces";
 interface PodMetricsContainer {
     name: string;
     usage: {
@@ -18,6 +18,8 @@ interface PodMetricsResponse {
     containers: PodMetricsContainer[];
 }
 
+const DEPENDENCY_ANNOTATION = "event-engine.ai-devops.example.com/depends-on";
+
 export class KubernetesServices {
     private kc: k8s.KubeConfig;
     private coreApi: k8s.CoreV1Api
@@ -34,6 +36,99 @@ export class KubernetesServices {
         this.appsApi = this.kc.makeApiClient(k8s.AppsV1Api)
         this.networkingApi = this.kc.makeApiClient(k8s.NetworkingV1Api)
         this.customObjectsApi = this.kc.makeApiClient(k8s.CustomObjectsApi)
+    }
+
+    async getDependencyTopology(): Promise<Record<string, any>> {
+        try {
+            const response = await this.coreApi.listServiceForAllNamespaces()
+            const services: DependencyTopologyService[] = []
+            const dependencies: DependencyTopologyEdge[] = []
+            const serviceIds = new Set<String>()
+            const edgeKeys = new Set<String>()
+
+            for (const service of response.body.items) {
+                const name = service.metadata?.name
+                console.log("service name", name)
+                const namespace = service.metadata?.namespace
+
+                if (!name || !namespace) continue
+
+                const service_id = `${namespace}/${name}`
+                serviceIds.add(service_id)
+
+                services.push({
+                    service_id,
+                    name,
+                    namespace,
+                    selector: service.spec?.selector ?? {}
+                })
+                const declared_dependency = service.metadata?.annotations?.[DEPENDENCY_ANNOTATION]
+
+                if (!declared_dependency) continue
+
+                for (const entry of declared_dependency.split(",")) {
+                    console.log("check entry", entry)
+                    const reference = entry.trim()
+
+                    if (!reference) continue
+
+                    const parts = reference.split("/")
+                    console.log("parts=>>>>>", parts)
+
+                    let dependency_service_id: string
+                    if (parts.length === 1 && parts[0]) {
+                        dependency_service_id = `${namespace}/${parts[0]}`
+                    } else if (parts.length === 2 &&
+                        parts[0] &&
+                        parts[1]) {
+                        dependency_service_id = `${parts[0]}/${parts[1]}`;
+                    } else {
+                        throw new Error(
+                            `Invalid dependency reference "${reference}" ` +
+                            `declared by ${service_id}. Use "service" or "namespace/service".`
+                        );
+                    }
+
+                    if (dependency_service_id === service_id) {
+                        throw new Error(
+                            `Service ${service_id} cannot declare itself as a dependency.`
+                        );
+                    }
+                    // Prevent duplicate edges
+                    const edge_key = `${service_id}-${dependency_service_id}`
+
+                    if (edgeKeys.has(edge_key)) continue
+
+                    edgeKeys.add(edge_key)
+
+                    dependencies.push({
+                        dependent_service_id: service_id,
+                        dependency_service_id: dependency_service_id,
+                    });
+                }
+            }
+            
+            // Every declared dependency must refer to a Service in this cluster snapshot.
+            for (const edge of dependencies) {
+                if (!serviceIds.has(edge.dependency_service_id)) {
+                    throw new Error(
+                        `Dependency ${edge.dependency_service_id} declared by ` +
+                        `${edge.dependent_service_id} was not found in the selected cluster.`
+                    );
+                }
+            }
+
+            return {
+                schema_version: 1,
+                observed_at: new Date().toISOString(),
+                services,
+                dependencies,
+            };
+
+        } catch (error) {
+            console.log("Error", error)
+            throw this.getKubernetesError(error)
+        }
     }
 
     async getNamespaces() {
