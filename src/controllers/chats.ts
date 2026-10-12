@@ -51,14 +51,14 @@ export class Chats {
             const insert_ai_run = await insert_ai_run_query({
                 assistant_message_id,
                 user_id: data.req.user_id,
-                conversation_id,
+                conversation_id: data.body.conversation_id,
                 status: "running",
-                model: "qwen2.5:7b",
-                started_at: moment().format()
+                started_at: moment().format(),
+                input: data.body.message
             } as InsertAIRuns)
 
             const ai_run_id = insert_ai_run[0]?.id
-            let aiResponseText = "";
+            let aiResponse = {} as AIResponse
 
             try {
                 const py_msrv_result = await axios({
@@ -66,15 +66,17 @@ export class Chats {
                     url: `${process.env.PYTHON_MSRV}/ch/chat`,
                     data: {
                         message: data.body.message,
-                        history: []
+                        history: [],
+                        ai_run_id
                     },
                     headers: {
                         "x-access-token": data.req.token
                     }
                 })
 
-                aiResponseText = py_msrv_result.data?.response || "";
+                aiResponse = py_msrv_result.data || {};
             } catch (error) {
+                console.log("error", error)
                 await update_ai_run(ai_run_id, {
                     status: "failed",
                     completed_at: moment().toISOString(),
@@ -89,9 +91,9 @@ export class Chats {
             }
 
             await update_message(assistant_message_id, {
-                content: aiResponseText,
+                content: aiResponse?.response ?? aiResponse?.error,
                 status: "completed",
-                updated_at: moment().format()
+                updated_at: moment().add(20, "seconds").format()
             });
 
             await update_ai_run(ai_run_id, {
@@ -102,8 +104,8 @@ export class Chats {
             return new ResponseBuilder<Record<string, string>>()
                 .setSignature("AI-DEVOPS")
                 .success(
-                    { message: aiResponseText },
-                    "Chat processed successfully"
+                    { message: aiResponse?.response },
+                    "messages"
                 );
         } catch (error: any) {
             console.error("GitHub error:", error?.response?.data || error)
