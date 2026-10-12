@@ -202,5 +202,29 @@ router.get("/v1/dashboard/repos", [authenticator, isAdmin], async (req: CustomRe
         next(error)
     }
 })
+router.get("/v1/agent/usage", [authenticator, isAdmin], async (req: CustomRequest, res: Response, next: NextFunction) => {
+    try {
+        let data: Partial<ActionRequest> = {
+            req: req.data
+        }
+
+        const result = await repo_controller.get_agent_usage(data)
+        res.status(result.status).send(result)
+    } catch (error) {
+        next(error)
+    }
+})
+router.get("/v1/success/rate", [authenticator, isAdmin], async (req: CustomRequest, res: Response, next: NextFunction) => {
+    try {
+        let data: Partial<ActionRequest> = {
+            req: req.data
+        }
+
+        const result = await repo_controller.get_build_success_rate(data)
+        res.status(result.status).send(result)
+    } catch (error) {
+        next(error)
+    }
+})
 
 export default router
