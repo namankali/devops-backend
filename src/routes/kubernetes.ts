@@ -28,6 +28,22 @@ router.get("/v1/clusters",
         }
     })
 
+router.get("/v1/topology",
+    [authenticator, isAdmin],
+    async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            let data: Partial<ActionRequest> = {
+                body: req.body,
+                req: req.data
+            }
+
+            const result = await kubernetesController.getDependencyTopology(data)
+            res.status(result.status).send(result)
+        } catch (error) {
+            next(error)
+        }
+    })
+
 router.get("/v1/dashboard/kube",
     [authenticator, isAdmin],
     async (req: CustomRequest, res: Response, next: NextFunction): Promise<void> => {
