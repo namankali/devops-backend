@@ -70,7 +70,7 @@ const get_repo_build_details_by_date = async (data: any) => {
 
         if (date_diff === 0) {
             query = db.raw(`
-                    SELECT DISTINCT on (payload -> 'workflow_run' ->> 'id')
+                   with cte as (SELECT DISTINCT on (payload -> 'workflow_run' ->> 'id')
                       (payload -> 'workflow_run' ->> 'id') as run_id,
                         (payload -> 'workflow_run' ->> 'run_number')::int AS run_number,
                         payload -> 'workflow_run' ->> 'status' AS status,
@@ -90,13 +90,78 @@ const get_repo_build_details_by_date = async (data: any) => {
                     and (payload -> 'workflow_run' ->> 'head_branch') = '${data.branch_name}'
                     ${sub_str}
                     and (payload -> 'workflow_run' ->> 'updated_at'):: DATE = '${data.start_date}'
-                    order by (payload -> 'workflow_run' ->> 'id') desc, received_at DESC
+                    order by (payload -> 'workflow_run' ->> 'id') desc, received_at DESC)
+
+                    select 
+                        COUNT(run_id),
+                        repo_name,
+                        json_agg(
+                            json_build_object(
+                                'run_id', run_id,
+                                'run_number', run_number,
+                                'run_attempt', run_attempt,
+                                'workflow_run_name', workflow_run_name,
+                                'branch', branch,
+                                'commit_sha', commit_sha,
+                                'display_title', display_title,
+                                'created_at', created_at,
+                                'updated_at', updated_at,
+                                'status', status
+                    )) as builds
+                    from cte
+                    group by cte.repo_name
                 `)
 
             const result = await query
             return result.rows
         } else {
-            console.log("Coming soon")
+            query = db.raw(`
+                    with cte as (
+                        SELECT DISTINCT on (payload -> 'workflow_run' ->> 'id')
+                        (payload -> 'workflow_run' ->> 'id') as run_id,
+                        (payload -> 'workflow_run' ->> 'run_number')::int AS run_number,
+                        payload -> 'workflow_run' ->> 'status' AS status,
+                        payload -> 'workflow_run' ->> 'conclusion' AS conclusion,
+                        payload -> 'workflow_run' ->> 'run_attempt' AS run_attempt,
+                        payload -> 'workflow_run' ->> 'name' AS workflow_run_name,
+                        payload -> 'repository' ->> 'name' AS repo_name,
+                        payload -> 'workflow_run' ->> 'head_branch' AS branch,
+                        payload -> 'workflow_run' ->> 'head_sha' AS commit_sha,
+                        payload -> 'workflow_run' ->> 'display_title' AS display_title,
+                        payload -> 'workflow_run' ->> 'html_url' AS html_url,
+                        payload -> 'workflow_run' ->> 'created_at' AS created_at,
+                        payload -> 'workflow_run' ->> 'updated_at' AS updated_at
+                    from github_events as ge
+                    where ge.event_type = 'workflow_run'
+                    and (payload -> 'workflow_run' ->> 'conclusion') = 'failure'
+                    and (payload -> 'workflow_run' ->> 'head_branch') = '${data.branch_name}'
+                    ${sub_str}
+                    and (payload -> 'workflow_run' ->> 'updated_at'):: DATE >= '${data.start_date}' and (payload -> 'workflow_run' ->> 'updated_at'):: DATE <= '${data.end_date}'
+                    order by (payload -> 'workflow_run' ->> 'id') desc, received_at DESC
+                    )
+
+                    select 
+                        COUNT(run_id),
+                        repo_name,
+                        json_agg(
+                            json_build_object(
+                                'run_id', run_id,
+                                'run_number', run_number,
+                                'run_attempt', run_attempt,
+                                'workflow_run_name', workflow_run_name,
+                                'branch', branch,
+                                'commit_sha', commit_sha,
+                                'display_title', display_title,
+                                'created_at', created_at,
+                                'updated_at', updated_at,
+                                'status', status
+                    )) as builds
+                    from cte
+                    group by cte.repo_name
+                `)
+
+            const result = await query
+            return result.rows
         }
 
     } catch (error) {
