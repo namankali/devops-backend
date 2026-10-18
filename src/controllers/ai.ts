@@ -5,6 +5,8 @@ import { GETAIWorflowRepos, GetAIWorkflow, GetAIWorkflowOutput } from "../utils/
 import { ResponseBuilder } from "../utils/responseBuilder"
 import { ApiResponse } from "../utils/types"
 import { throwError } from "./common"
+import axios from "axios"
+import { PYTHON_MSRV } from "../helper/configHelper"
 
 export class AIController {
     constructor() { }
@@ -78,6 +80,32 @@ export class AIController {
             >()
                 .setSignature("AI-DEVOPS")
                 .success(undefined, "Data for LLM")
+        } catch (error: any) {
+            console.error("GitHub error:", error?.response?.data || error)
+
+            throw throwError(
+                error?.response?.data?.message ||
+                error.message ||
+                "GitHub integration failed"
+            )
+        }
+    }
+
+    async get_dashboard_summary(data: any): Promise<ApiResponse<any>> {
+        try {
+            const response = await axios.get(
+                `${PYTHON_MSRV}/ee/dashboard/summary`,
+                {
+                    headers: {
+                        "x-access-token": data.req.token
+                    }
+                }
+            )
+            console.log("python response", response.data.data)
+
+            return new ResponseBuilder<any>()
+                .setSignature("AI-DEVOPS")
+                .success(response.data.data, "Data for LLM")
         } catch (error: any) {
             console.error("GitHub error:", error?.response?.data || error)
 

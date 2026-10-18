@@ -25,5 +25,20 @@ router.get("/v1/info", [authenticator, isAdmin], async (req: CustomRequest, res:
     }
 
 })
+router.get("/v1/dashboard-summary", [authenticator, isAdmin], async (req: CustomRequest, res: Response, next: NextFunction) => {
+    try {
+        let data: Partial<ActionRequest> = {
+            req: req.data,
+            params: { ...req.params },
+            query: { ...req.query }
+        }
+        const result = await ai_controller.get_dashboard_summary(data)
+
+        return res.status(result.status).send(result)
+    } catch (error) {
+        next(error)
+    }
+
+})
 
 export default router
