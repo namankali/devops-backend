@@ -52,7 +52,7 @@ jobs:
             password: ${{secrets.DOCKER_PASSWORD}}
 
         - name: Build docker image(local)
-          run: docker buildx build --load -t devops-backend:latest
+          run: docker buildx build --load -t devops-backend:latest .
           
         - name: Install Trivy
           run: |
