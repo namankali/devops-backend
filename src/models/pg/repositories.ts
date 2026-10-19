@@ -4,6 +4,12 @@ import { InsertRepo } from "../../utils/interfaces"
 const db = require("./db")
 const table = "repositories"
 
+interface UserByRepoId {
+    github_account_id: number
+    github_repo_id: number
+    user_id: number
+}
+
 
 
 const get_repo = async (github_repo_id: number) => {
@@ -344,6 +350,24 @@ const detailed_repos_data_dashboard = async () => {
     }
 }
 
+const get_user_id_by_repo_id = async (repo_id: number): Promise<UserByRepoId[]> => {
+    try {
+        const query = db.raw(`
+            SELECT
+                repos.github_account_id,
+                repos.github_repo_id,
+                ga.user_id
+            FROM repositories as repos
+            LEFT JOIN github_accounts ga on ga.id = repos.github_account_id
+            WHERE repos.github_repo_id = ${repo_id}
+        `)
+        const result = await query
+        return result.rows
+    } catch (error) {
+        throw error
+    }
+}
+
 
 export {
     get_repo,
@@ -353,5 +377,6 @@ export {
     update_repo_github_accounts_id,
     get_repo_details_dashboard,
     detailed_repos_data_dashboard,
-    get_repo_build_details_by_date
+    get_repo_build_details_by_date,
+    get_user_id_by_repo_id
 }
